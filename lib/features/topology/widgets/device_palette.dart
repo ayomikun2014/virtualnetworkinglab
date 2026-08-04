@@ -6,10 +6,7 @@ import '../../../core/enums/app_enums.dart';
 class DevicePalette extends StatelessWidget {
   final Function(DeviceType type, String defaultModel) onDeviceSelected;
 
-  const DevicePalette({
-    super.key,
-    required this.onDeviceSelected,
-  });
+  const DevicePalette({super.key, required this.onDeviceSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +14,7 @@ class DevicePalette extends StatelessWidget {
       width: 220,
       decoration: BoxDecoration(
         color: AppTheme.surfaceGlass,
-        border: const Border(
-          right: BorderSide(color: AppTheme.borderSubtle),
-        ),
+        border: const Border(right: BorderSide(color: AppTheme.borderSubtle)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,7 +26,11 @@ class DevicePalette extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.developer_board, color: AppTheme.primaryCyan, size: 20),
+                Icon(
+                  Icons.developer_board,
+                  color: AppTheme.primaryCyan,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'Hardware Library',
@@ -115,7 +114,7 @@ class DevicePalette extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.backgroundMidnight.withOpacity(0.5),
+              color: AppTheme.backgroundMidnight.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppTheme.borderSubtle),
             ),
@@ -124,7 +123,7 @@ class DevicePalette extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(icon, color: color, size: 22),
@@ -152,7 +151,11 @@ class DevicePalette extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.add_circle_outline, color: color.withOpacity(0.7), size: 18),
+                Icon(
+                  Icons.add_circle_outline,
+                  color: color.withValues(alpha: 0.7),
+                  size: 18,
+                ),
               ],
             ),
           ),

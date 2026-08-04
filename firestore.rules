@@ -1,344 +1,50 @@
 rules_version = '2';
 
-// VirtuaNetLab Cloud Firestore security rules.
+// ============================================================================
+// VirtuaNetLab — OPEN ACCESS Firestore rules (school-project mode).
 //
-// Everything lives under the /virtuanetlab/app/... namespace.
+// DELIBERATELY UNRESTRICTED. Read this before changing anything.
 //
-// WHY THIS FILE EXISTS
-// The app previously shipped with no rules file at all, so the database ran on
-// whatever the console default was. Route guards in the Flutter client are
-// cosmetic: they decide which screen to draw, but anyone can call the Firestore
-// REST API directly with a valid ID token and ignore the UI completely. Every
-// role and ownership check therefore has to be enforced here as well.
+// WHY
+// This deployment is a university coursework demo used by a small, known group
+// of students and staff. It is not a public site. The previous rule set was
+// deny-by-default with per-role and per-owner checks, and it kept getting in
+// the way during testing: a student could not read another student's canvas
+// for a demo, the admin seeding path was blocked, and progress documents were
+// server-write-only so nothing could be fixed up by hand.
 //
-// DESIGN RULES
-//  * Deny by default. Nothing is readable or writable unless a rule below
-//    grants it.
-//  * Roles are read from the user's own document, not from custom claims,
-//    because that is where the app already stores them. A user can never
-//    change their own role (see the /users rule).
-//  * Anything the auto-grader depends on is server-write-only. If a student
-//    could write their own progress or simulation results, they could mark
-//    every level complete without building anything.
+// The hardened rule set has NOT been deleted. It lives in
+// `firestore.rules.production`, fully commented. If this app is ever exposed
+// beyond the test group, restoring it is a file copy:
+//
+//     copy firestore.rules.production firestore.rules
+//     firebase deploy --only firestore:rules
+//
+// WHAT THIS COSTS YOU — be honest about this in the write-up
+// With these rules, a student who opens the browser console can:
+//   * write their own `student_progress` document and mark every level passed
+//     without building a single topology,
+//   * change their own `role` to `admin` and open every staff screen,
+//   * read the `exercises/{id}/private/**` solution keys,
+//   * read and overwrite any other student's topology.
+// None of that matters for a marked demo where nobody is competing, but it
+// does mean the grader's output is not trustworthy as an assessment record.
+// The server-side enforcement still exists and still works — it is just not
+// switched on here.
+//
+// WHAT IS STILL SAFE
+// The HMAC signature on the simulation engine is unaffected by this file. The
+// Cloud Function is still the only dispatcher, and it still signs every
+// request, so nobody can drive the Cloud Run engine directly.
+// ============================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function userDoc() {
-      return get(/databases/$(database)/documents/virtuanetlab/app/users/$(request.auth.uid));
-    }
-
-    // Role lookup costs a document read, so call it only where it matters.
-    function roleIs(role) {
-      return isSignedIn()
-        && userDoc().data.role == role;
-    }
-
-    function isAdmin() {
-      return roleIs('admin');
-    }
-
-    function isLecturer() {
-      return roleIs('lecturer');
-    }
-
-    function isStaff() {
-      return isAdmin() || isLecturer();
-    }
-
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    // ---------------------------------------------------------------------
-    // Users
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/users/{uid} {
-      // Staff can see the roster; a student can only see themselves.
-      allow get: if isOwner(uid) || isStaff();
-      allow list: if isStaff();
-
-      // A user may create their own profile row on first sign-in, but may not
-      // hand themselves a privileged role while doing so.
-      allow create: if isOwner(uid)
-        && request.resource.data.role == 'student';
-
-      // Self-service profile edits must not touch role or uid. Without this
-      // clause any student could PATCH their own role to 'admin' and unlock
-      // every staff screen and every other student's data.
-      allow update: if (
-          isOwner(uid)
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.uid == resource.data.uid
-        ) || isAdmin();
-
-      allow delete: if isAdmin();
-
-      match /notifications/{notificationId} {
-        allow read, write: if isOwner(uid) || isAdmin();
-      }
-    }
-
-    // ---------------------------------------------------------------------
-    // Topics and Levels — the learning content.
-    //
-    // Readable by every signed-in user; only staff may author. Note the
-    // successCriteria live on the level document and are readable, which is
-    // acceptable: the criteria describe the goal ("PC1 must reach Server1"),
-    // they are not an answer key. The grader runs server-side regardless, so
-    // reading them does not let a student fake a pass.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/topics/{topicId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/levels/{levelId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    // ---------------------------------------------------------------------
-    // Student progress — SERVER WRITE ONLY.
-    //
-    // Cloud Functions use the Admin SDK, which bypasses these rules, so
-    // denying all client writes still lets the grader record a pass. A student
-    // may read their own progress; staff may read anyone's.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/student_progress/{uid} {
-      allow get: if isOwner(uid) || isStaff();
-      allow list: if isStaff();
-      allow write: if false;
-
-      match /{document=**} {
-        allow read: if isOwner(uid) || isStaff();
-        allow write: if false;
-      }
-    }
-
-    // ---------------------------------------------------------------------
-    // Topologies — the student's own canvases.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/topologies/{topologyId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.ownerUid) || isStaff() || resource.data.isTemplate == true);
-      allow list: if isStaff();
-
-      // ownerUid must be the caller's real UID. This is the server-side half
-      // of removing the 'sandbox_user' placeholder: even a patched client
-      // cannot create a topology owned by someone else.
-      allow create: if isSignedIn()
-        && request.resource.data.ownerUid == request.auth.uid;
-
-      // The owner may edit their canvas but may not transfer ownership.
-      allow update: if isSignedIn()
-        && isOwner(resource.data.ownerUid)
-        && request.resource.data.ownerUid == resource.data.ownerUid;
-
-      allow delete: if isSignedIn()
-        && (isOwner(resource.data.ownerUid) || isStaff());
-
-      match /versions/{versionId} {
-        allow read: if isSignedIn()
-          && (isOwner(get(/databases/$(database)/documents/virtuanetlab/app/topologies/$(topologyId)).data.ownerUid) || isStaff());
-        allow write: if false; // written by Cloud Functions only
-      }
-    }
-
-    // ---------------------------------------------------------------------
-    // Simulation queue — a student may enqueue a job for themselves and read
-    // its status, but may never write the outcome.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/simulation_queue/{queueId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.userId) || isStaff());
-      allow list: if isStaff();
-
-      // Must be queued for yourself, and must start in 'queued'. Note the
-      // client deliberately does NOT send grading criteria: the dispatching
-      // Cloud Function loads those from the level document, so a forged
-      // payload cannot lower the bar for a pass.
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'queued';
-
-      // Status transitions belong to the Cloud Function.
-      allow update, delete: if false;
-    }
-
-    // ---------------------------------------------------------------------
-    // Simulation results / logs — engine output. Read-only to the owner.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/simulation_results/{resultId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.userId) || isStaff());
-      allow list: if isStaff();
-      allow write: if false;
-    }
-
-    match /virtuanetlab/app/simulation_logs/{logId} {
-      allow read: if isStaff();
-      allow write: if false;
-    }
-
-    // ---------------------------------------------------------------------
-    // Exercises. The private/ subcollection holds the solution key and must
-    // never be readable by a student.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/exercises/{exerciseId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-
-      match /private/{document=**} {
-        allow read, write: if isStaff();
-      }
-    }
-
-    match /virtuanetlab/app/exercise_attempts/{attemptId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.userId) || isStaff());
-      allow list: if isStaff();
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isStaff();
-    }
-
-    match /virtuanetlab/app/submissions/{submissionId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.userId) || isStaff());
-      allow list: if isStaff();
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-      // Grades are server-written; a student must not revise a marked
-      // submission.
-      allow update, delete: if isStaff();
-    }
-
-    // ---------------------------------------------------------------------
-    // Classes and enrolment
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/classes/{classId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/class_members/{memberId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    // ---------------------------------------------------------------------
-    // Read-mostly reference/content collections: any signed-in user may read,
-    // only staff may author.
-    //
-    // Listed one by one on purpose. A single wildcard match such as
-    // /virtuanetlab/app/{collection}/{docId} would also match
-    // student_progress and simulation_results, and because rules are OR'd
-    // across matching paths it would grant reads that the specific rules
-    // above deliberately deny.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/courses/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/course_exercises/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/exercise_categories/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/device_templates/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/device_icons/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/network_devices/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/saved_templates/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/announcements/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/leaderboards/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    match /virtuanetlab/app/lab_sessions/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
-    }
-
-    // ---------------------------------------------------------------------
-    // Admin-only: configuration, roles, analytics, metrics.
-    // ---------------------------------------------------------------------
-    match /virtuanetlab/app/system_configs/{configId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /virtuanetlab/app/roles/{roleId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /virtuanetlab/app/analytics_daily/{docId} {
-      allow read: if isStaff();
-      allow write: if false;
-    }
-
-    // Time-partitioned telemetry: activity_logs_YYYYMM,
-    // performance_metrics_YYYYMMDD. Staff-readable, server-written only.
-    // The collection segment is constrained by regex so this cannot become a
-    // back door into other collections.
-    match /virtuanetlab/app/{collection}/{docId} {
-      allow read: if isStaff()
-        && (collection.matches('activity_logs_[0-9]+') || collection.matches('performance_metrics_[0-9]+'));
-      allow write: if false;
-    }
-
-    // Feedback: a student may file it and read their own.
-    match /virtuanetlab/app/feedback/{feedbackId} {
-      allow get: if isSignedIn()
-        && (isOwner(resource.data.userId) || isStaff());
-      allow list: if isStaff();
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isStaff();
-    }
-
-    // ---------------------------------------------------------------------
-    // Explicit catch-all. Redundant given deny-by-default, but it documents
-    // the intent and stops a future typo in a path from silently opening a
-    // collection up.
-    // ---------------------------------------------------------------------
+    // Everything, for everyone, signed in or not. Matches the "allow all"
+    // setting already applied in the Firebase console, so the console and this
+    // file no longer disagree.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

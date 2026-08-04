@@ -42,9 +42,19 @@ COPY --from=builder /install /install
 # Copy application source
 COPY . /app/
 
+# Cloud Run injects the port to listen on as $PORT and is free to change it, so
+# the app must not hard-code 8080. 8080 stays as the default for plain
+# `docker run` and for local use.
+ENV PORT=8080
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8080')+'/health')" || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Shell form (not exec form) so that $PORT is expanded at container start.
+# The exec-form equivalent would pass the literal string "$PORT" to uvicorn,
+# which fails to parse as an integer and the container never becomes ready —
+# Cloud Run then reports the unhelpful "container failed to start and listen
+# on the port defined by the PORT environment variable".
+CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT}
+

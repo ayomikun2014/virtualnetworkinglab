@@ -3,6 +3,18 @@
 Blockers 1–5 from the build plan are done and committed. Items 6–10 and the
 polish list are not started. This document is the spec for whoever picks it up.
 
+> **Deploying?** See `DEPLOYMENT.md` — step-by-step for Cloud Run + Firebase
+> Hosting, written to be followed start to finish.
+>
+> **Note on security rules.** `firestore.rules` and `storage.rules` are now
+> deliberately wide open (`allow read, write: if true`) because this is a
+> private coursework demo for a handful of known students. The hardened,
+> deny-by-default versions described in section 5 below are preserved verbatim
+> as `firestore.rules.production` / `storage.rules.production` and are restored
+> with a file copy. The reasoning and the exact trade-off are documented in the
+> header of each file.
+
+
 ---
 
 ## Part 1 — What was done

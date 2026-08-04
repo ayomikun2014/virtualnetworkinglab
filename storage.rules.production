@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// VirtuaNetLab Cloud Storage security rules.
+//
+// Deny by default. Storage had no rules file at all, which on a default bucket
+// means any authenticated user can read and write anywhere in it — including
+// overwriting another student's uploads.
+//
+// Size and content-type limits are enforced here rather than in the client,
+// because a direct SDK call bypasses any client-side picker restriction.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function roleIs(role) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/virtuanetlab/app/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isStaff() {
+      return roleIs('admin') || roleIs('lecturer');
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underSizeMb(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    // Profile avatars: world-readable within the app, owner-writable only.
+    match /virtuanetlab/app/avatars/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && isImage() && underSizeMb(5);
+    }
+
+    // A student's own topology exports / screenshots.
+    match /virtuanetlab/app/topologies/{uid}/{allPaths=**} {
+      allow read: if isOwner(uid) || isStaff();
+      allow write: if isOwner(uid) && underSizeMb(10);
+    }
+
+    // Submission attachments. Staff can read anyone's for marking; a student
+    // cannot overwrite a file once submitted.
+    match /virtuanetlab/app/submissions/{uid}/{allPaths=**} {
+      allow read: if isOwner(uid) || isStaff();
+      allow create: if isOwner(uid) && underSizeMb(20);
+      allow update, delete: if isStaff();
+    }
+
+    // Course and level assets (device icons, lesson diagrams): readable by
+    // everyone signed in, authored by staff only.
+    match /virtuanetlab/app/content/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isStaff() && underSizeMb(20);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

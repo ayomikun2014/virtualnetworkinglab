@@ -13,7 +13,7 @@ class CanvasGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = dotColor.withOpacity(0.35)
+      ..color = dotColor.withValues(alpha: 0.35)
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
 

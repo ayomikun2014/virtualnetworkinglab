@@ -3,7 +3,12 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import axios from "axios";
 
-import { HMAC_SECRET_KEY, FASTAPI_ENGINE_URL } from "../../config/env";
+import {
+  HMAC_SECRET_KEY,
+  FASTAPI_ENGINE_URL,
+  assertEngineUrlIsUsable,
+} from "../../config/env";
+
 import { generateHmacSignature } from "../../utils/hmac";
 
 /**
@@ -130,8 +135,15 @@ export const onSimulationQueueCreatedHandler = onDocumentCreated(
       }
       const signatureHeader = generateHmacSignature(payload, secret);
 
-      // 6. Post request to Python FastAPI Cloud Run engine
+      // 6. Post request to Python FastAPI Cloud Run engine.
+      //
+      // Checked here, immediately before the POST, so the failure surfaces as
+      // a readable message on the queue document instead of a 45-second
+      // ECONNREFUSED timeout when FASTAPI_ENGINE_URL was never set.
+      assertEngineUrlIsUsable();
+
       const targetUrl = `${FASTAPI_ENGINE_URL}/api/v1/simulate`;
+
       logger.info(`Dispatching simulation job '${queueId}' to ${targetUrl}`);
 
       const response = await axios.post(targetUrl, payload, {
