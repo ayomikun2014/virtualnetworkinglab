@@ -13,15 +13,27 @@ class AppConstants {
   static String get classMembersCollection => '$rootPath/class_members';
   static String get coursesCollection => '$rootPath/courses';
   static String get courseExercisesCollection => '$rootPath/course_exercises';
-  static String get exerciseCategoriesCollection => '$rootPath/exercise_categories';
+  static String get exerciseCategoriesCollection =>
+      '$rootPath/exercise_categories';
   static String get exercisesCollection => '$rootPath/exercises';
   static String get exerciseAttemptsCollection => '$rootPath/exercise_attempts';
   static String get submissionsCollection => '$rootPath/submissions';
   static String get topologiesCollection => '$rootPath/topologies';
-  static String get simulationQueueCollection => '$rootPath/simulation_queue';
-  static String get simulationResultsCollection => '$rootPath/simulation_results';
-  static String get simulationLogsCollection => '$rootPath/simulation_logs';
   static String get studentProgressCollection => '$rootPath/student_progress';
+
+  /// Device catalogue — the palette reads from this collection.
+  static String get deviceCatalogueCollection => '$rootPath/device_catalogue';
+
+  /// Topics and their nested levels.
+  static String get topicsCollection => '$rootPath/topics';
+  static String levelsCollection(String topicId) =>
+      '$topicsCollection/$topicId/levels';
+
+  /// Per-user progression and saved attempts.
+  static String userProgressCollection(String uid) =>
+      '$usersCollection/$uid/progress';
+  static String userAttemptsCollection(String uid) =>
+      '$usersCollection/$uid/attempts';
   static String get systemConfigsCollection => '$rootPath/system_configs';
   static String get rolesCollection => '$rootPath/roles';
   static String get announcementsCollection => '$rootPath/announcements';
@@ -35,17 +47,22 @@ class AppConstants {
   static String get analyticsDailyCollection => '$rootPath/analytics_daily';
 
   /// Time-partitioned collection path generators
-  static String activityLogsCollection(String yyyyMm) => '$rootPath/activity_logs_$yyyyMm';
-  static String performanceMetricsCollection(String yyyyMmDd) => '$rootPath/performance_metrics_$yyyyMmDd';
+  static String activityLogsCollection(String yyyyMm) =>
+      '$rootPath/activity_logs_$yyyyMm';
+  static String performanceMetricsCollection(String yyyyMmDd) =>
+      '$rootPath/performance_metrics_$yyyyMmDd';
 
   /// User notifications subcollection path generator
-  static String userNotificationsCollection(String uid) => '$usersCollection/$uid/notifications';
+  static String userNotificationsCollection(String uid) =>
+      '$usersCollection/$uid/notifications';
 
   /// Topology versions subcollection path generator
-  static String topologyVersionsCollection(String topologyId) => '$topologiesCollection/$topologyId/versions';
+  static String topologyVersionsCollection(String topologyId) =>
+      '$topologiesCollection/$topologyId/versions';
 
   /// Exercise private solution key subcollection path
-  static String exerciseSolutionKeyPath(String exerciseId) => '$exercisesCollection/$exerciseId/private/solution_key';
+  static String exerciseSolutionKeyPath(String exerciseId) =>
+      '$exercisesCollection/$exerciseId/private/solution_key';
 
   /// Storage bucket root path
   static const String storageRootPath = 'virtuanetlab/app';

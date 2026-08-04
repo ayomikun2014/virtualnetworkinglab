@@ -3,15 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../core/errors/failures.dart';
 import '../../../data/models/topology_model.dart';
-import '../../../data/repositories/simulation_repository.dart';
 import '../../../data/repositories/topology_repository.dart';
 
 /// State Management Provider for Interactive Topology Builder Canvas Engine
 class TopologyProvider extends ChangeNotifier {
   final ITopologyRepository _repository;
   StreamSubscription<TopologyModel?>? _topologySubscription;
-
-  final ISimulationRepository _simulationRepository;
 
   TopologyModel? _activeTopology;
   String? _selectedNodeId;
@@ -32,12 +29,8 @@ class TopologyProvider extends ChangeNotifier {
   Timer? _saveDebounce;
   static const _saveDebounceDelay = Duration(milliseconds: 600);
 
-  TopologyProvider({
-    ITopologyRepository? repository,
-    ISimulationRepository? simulationRepository,
-  }) : _repository = repository ?? FirebaseTopologyRepository(),
-       _simulationRepository =
-           simulationRepository ?? FirebaseSimulationRepository();
+  TopologyProvider({ITopologyRepository? repository})
+    : _repository = repository ?? FirebaseTopologyRepository();
 
   // Getters
   TopologyModel? get activeTopology => _activeTopology;
@@ -100,28 +93,6 @@ class TopologyProvider extends ChangeNotifier {
             notifyListeners();
           },
         );
-  }
-
-  /// Enqueues simulation job in Firestore queue
-  Future<String> enqueueSimulation({
-    required String userId,
-    String? exerciseId,
-    String? pingSource,
-    String? pingTarget,
-  }) async {
-    if (_activeTopology == null) {
-      throw const ServerFailure('No active topology to simulate');
-    }
-
-    await saveCurrentCanvas();
-
-    return await _simulationRepository.enqueueSimulationJob(
-      topologyId: _activeTopology!.topologyId,
-      userId: userId,
-      exerciseId: exerciseId,
-      pingSource: pingSource,
-      pingTarget: pingTarget,
-    );
   }
 
   /// Sets or clears currently selected canvas device node
