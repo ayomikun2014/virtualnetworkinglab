@@ -179,6 +179,228 @@ abstract class _Position implements Position {
       throw _privateConstructorUsedError;
 }
 
+AclRule _$AclRuleFromJson(Map<String, dynamic> json) {
+  return _AclRule.fromJson(json);
+}
+
+/// @nodoc
+mixin _$AclRule {
+  /// 'allow' | 'deny'
+  String get action => throw _privateConstructorUsedError;
+
+  /// 'any' | 'icmp' | 'tcp' | 'udp'
+  String get protocol => throw _privateConstructorUsedError;
+  String get src => throw _privateConstructorUsedError;
+  String get dst => throw _privateConstructorUsedError;
+
+  /// Serializes this AclRule to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of AclRule
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $AclRuleCopyWith<AclRule> get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $AclRuleCopyWith<$Res> {
+  factory $AclRuleCopyWith(AclRule value, $Res Function(AclRule) then) =
+      _$AclRuleCopyWithImpl<$Res, AclRule>;
+  @useResult
+  $Res call({String action, String protocol, String src, String dst});
+}
+
+/// @nodoc
+class _$AclRuleCopyWithImpl<$Res, $Val extends AclRule>
+    implements $AclRuleCopyWith<$Res> {
+  _$AclRuleCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of AclRule
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? action = null,
+    Object? protocol = null,
+    Object? src = null,
+    Object? dst = null,
+  }) {
+    return _then(
+      _value.copyWith(
+            action: null == action
+                ? _value.action
+                : action // ignore: cast_nullable_to_non_nullable
+                      as String,
+            protocol: null == protocol
+                ? _value.protocol
+                : protocol // ignore: cast_nullable_to_non_nullable
+                      as String,
+            src: null == src
+                ? _value.src
+                : src // ignore: cast_nullable_to_non_nullable
+                      as String,
+            dst: null == dst
+                ? _value.dst
+                : dst // ignore: cast_nullable_to_non_nullable
+                      as String,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$AclRuleImplCopyWith<$Res> implements $AclRuleCopyWith<$Res> {
+  factory _$$AclRuleImplCopyWith(
+    _$AclRuleImpl value,
+    $Res Function(_$AclRuleImpl) then,
+  ) = __$$AclRuleImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String action, String protocol, String src, String dst});
+}
+
+/// @nodoc
+class __$$AclRuleImplCopyWithImpl<$Res>
+    extends _$AclRuleCopyWithImpl<$Res, _$AclRuleImpl>
+    implements _$$AclRuleImplCopyWith<$Res> {
+  __$$AclRuleImplCopyWithImpl(
+    _$AclRuleImpl _value,
+    $Res Function(_$AclRuleImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of AclRule
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? action = null,
+    Object? protocol = null,
+    Object? src = null,
+    Object? dst = null,
+  }) {
+    return _then(
+      _$AclRuleImpl(
+        action: null == action
+            ? _value.action
+            : action // ignore: cast_nullable_to_non_nullable
+                  as String,
+        protocol: null == protocol
+            ? _value.protocol
+            : protocol // ignore: cast_nullable_to_non_nullable
+                  as String,
+        src: null == src
+            ? _value.src
+            : src // ignore: cast_nullable_to_non_nullable
+                  as String,
+        dst: null == dst
+            ? _value.dst
+            : dst // ignore: cast_nullable_to_non_nullable
+                  as String,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$AclRuleImpl implements _AclRule {
+  const _$AclRuleImpl({
+    this.action = 'deny',
+    this.protocol = 'any',
+    this.src = 'any',
+    this.dst = 'any',
+  });
+
+  factory _$AclRuleImpl.fromJson(Map<String, dynamic> json) =>
+      _$$AclRuleImplFromJson(json);
+
+  /// 'allow' | 'deny'
+  @override
+  @JsonKey()
+  final String action;
+
+  /// 'any' | 'icmp' | 'tcp' | 'udp'
+  @override
+  @JsonKey()
+  final String protocol;
+  @override
+  @JsonKey()
+  final String src;
+  @override
+  @JsonKey()
+  final String dst;
+
+  @override
+  String toString() {
+    return 'AclRule(action: $action, protocol: $protocol, src: $src, dst: $dst)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$AclRuleImpl &&
+            (identical(other.action, action) || other.action == action) &&
+            (identical(other.protocol, protocol) ||
+                other.protocol == protocol) &&
+            (identical(other.src, src) || other.src == src) &&
+            (identical(other.dst, dst) || other.dst == dst));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, action, protocol, src, dst);
+
+  /// Create a copy of AclRule
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$AclRuleImplCopyWith<_$AclRuleImpl> get copyWith =>
+      __$$AclRuleImplCopyWithImpl<_$AclRuleImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$AclRuleImplToJson(this);
+  }
+}
+
+abstract class _AclRule implements AclRule {
+  const factory _AclRule({
+    final String action,
+    final String protocol,
+    final String src,
+    final String dst,
+  }) = _$AclRuleImpl;
+
+  factory _AclRule.fromJson(Map<String, dynamic> json) = _$AclRuleImpl.fromJson;
+
+  /// 'allow' | 'deny'
+  @override
+  String get action;
+
+  /// 'any' | 'icmp' | 'tcp' | 'udp'
+  @override
+  String get protocol;
+  @override
+  String get src;
+  @override
+  String get dst;
+
+  /// Create a copy of AclRule
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$AclRuleImplCopyWith<_$AclRuleImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
 InterfaceConfig _$InterfaceConfigFromJson(Map<String, dynamic> json) {
   return _InterfaceConfig.fromJson(json);
 }
@@ -187,9 +409,22 @@ InterfaceConfig _$InterfaceConfigFromJson(Map<String, dynamic> json) {
 mixin _$InterfaceConfig {
   String get name => throw _privateConstructorUsedError;
   String? get ip => throw _privateConstructorUsedError;
+
+  /// Dotted-decimal mask, e.g. '255.255.255.0'.
   String? get subnet => throw _privateConstructorUsedError;
   String? get mac => throw _privateConstructorUsedError;
+
+  /// Default gateway. Only meaningful on hosts (pc/server).
   String? get gateway => throw _privateConstructorUsedError;
+
+  /// 'up' | 'down'. Administrative state.
+  String get status => throw _privateConstructorUsedError;
+
+  /// VLAN id, or null for an untagged port.
+  int? get vlan => throw _privateConstructorUsedError;
+
+  /// Only meaningful on firewalls; evaluated hop-by-hop by the tracer.
+  List<AclRule> get acls => throw _privateConstructorUsedError;
 
   /// Serializes this InterfaceConfig to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -214,6 +449,9 @@ abstract class $InterfaceConfigCopyWith<$Res> {
     String? subnet,
     String? mac,
     String? gateway,
+    String status,
+    int? vlan,
+    List<AclRule> acls,
   });
 }
 
@@ -237,6 +475,9 @@ class _$InterfaceConfigCopyWithImpl<$Res, $Val extends InterfaceConfig>
     Object? subnet = freezed,
     Object? mac = freezed,
     Object? gateway = freezed,
+    Object? status = null,
+    Object? vlan = freezed,
+    Object? acls = null,
   }) {
     return _then(
       _value.copyWith(
@@ -260,6 +501,18 @@ class _$InterfaceConfigCopyWithImpl<$Res, $Val extends InterfaceConfig>
                 ? _value.gateway
                 : gateway // ignore: cast_nullable_to_non_nullable
                       as String?,
+            status: null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                      as String,
+            vlan: freezed == vlan
+                ? _value.vlan
+                : vlan // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            acls: null == acls
+                ? _value.acls
+                : acls // ignore: cast_nullable_to_non_nullable
+                      as List<AclRule>,
           )
           as $Val,
     );
@@ -281,6 +534,9 @@ abstract class _$$InterfaceConfigImplCopyWith<$Res>
     String? subnet,
     String? mac,
     String? gateway,
+    String status,
+    int? vlan,
+    List<AclRule> acls,
   });
 }
 
@@ -303,6 +559,9 @@ class __$$InterfaceConfigImplCopyWithImpl<$Res>
     Object? subnet = freezed,
     Object? mac = freezed,
     Object? gateway = freezed,
+    Object? status = null,
+    Object? vlan = freezed,
+    Object? acls = null,
   }) {
     return _then(
       _$InterfaceConfigImpl(
@@ -326,6 +585,18 @@ class __$$InterfaceConfigImplCopyWithImpl<$Res>
             ? _value.gateway
             : gateway // ignore: cast_nullable_to_non_nullable
                   as String?,
+        status: null == status
+            ? _value.status
+            : status // ignore: cast_nullable_to_non_nullable
+                  as String,
+        vlan: freezed == vlan
+            ? _value.vlan
+            : vlan // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        acls: null == acls
+            ? _value._acls
+            : acls // ignore: cast_nullable_to_non_nullable
+                  as List<AclRule>,
       ),
     );
   }
@@ -340,7 +611,10 @@ class _$InterfaceConfigImpl implements _InterfaceConfig {
     this.subnet,
     this.mac,
     this.gateway,
-  });
+    this.status = 'up',
+    this.vlan,
+    final List<AclRule> acls = const <AclRule>[],
+  }) : _acls = acls;
 
   factory _$InterfaceConfigImpl.fromJson(Map<String, dynamic> json) =>
       _$$InterfaceConfigImplFromJson(json);
@@ -349,16 +623,41 @@ class _$InterfaceConfigImpl implements _InterfaceConfig {
   final String name;
   @override
   final String? ip;
+
+  /// Dotted-decimal mask, e.g. '255.255.255.0'.
   @override
   final String? subnet;
   @override
   final String? mac;
+
+  /// Default gateway. Only meaningful on hosts (pc/server).
   @override
   final String? gateway;
 
+  /// 'up' | 'down'. Administrative state.
+  @override
+  @JsonKey()
+  final String status;
+
+  /// VLAN id, or null for an untagged port.
+  @override
+  final int? vlan;
+
+  /// Only meaningful on firewalls; evaluated hop-by-hop by the tracer.
+  final List<AclRule> _acls;
+
+  /// Only meaningful on firewalls; evaluated hop-by-hop by the tracer.
+  @override
+  @JsonKey()
+  List<AclRule> get acls {
+    if (_acls is EqualUnmodifiableListView) return _acls;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_acls);
+  }
+
   @override
   String toString() {
-    return 'InterfaceConfig(name: $name, ip: $ip, subnet: $subnet, mac: $mac, gateway: $gateway)';
+    return 'InterfaceConfig(name: $name, ip: $ip, subnet: $subnet, mac: $mac, gateway: $gateway, status: $status, vlan: $vlan, acls: $acls)';
   }
 
   @override
@@ -370,12 +669,25 @@ class _$InterfaceConfigImpl implements _InterfaceConfig {
             (identical(other.ip, ip) || other.ip == ip) &&
             (identical(other.subnet, subnet) || other.subnet == subnet) &&
             (identical(other.mac, mac) || other.mac == mac) &&
-            (identical(other.gateway, gateway) || other.gateway == gateway));
+            (identical(other.gateway, gateway) || other.gateway == gateway) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.vlan, vlan) || other.vlan == vlan) &&
+            const DeepCollectionEquality().equals(other._acls, _acls));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, name, ip, subnet, mac, gateway);
+  int get hashCode => Object.hash(
+    runtimeType,
+    name,
+    ip,
+    subnet,
+    mac,
+    gateway,
+    status,
+    vlan,
+    const DeepCollectionEquality().hash(_acls),
+  );
 
   /// Create a copy of InterfaceConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -401,6 +713,9 @@ abstract class _InterfaceConfig implements InterfaceConfig {
     final String? subnet,
     final String? mac,
     final String? gateway,
+    final String status,
+    final int? vlan,
+    final List<AclRule> acls,
   }) = _$InterfaceConfigImpl;
 
   factory _InterfaceConfig.fromJson(Map<String, dynamic> json) =
@@ -410,12 +725,28 @@ abstract class _InterfaceConfig implements InterfaceConfig {
   String get name;
   @override
   String? get ip;
+
+  /// Dotted-decimal mask, e.g. '255.255.255.0'.
   @override
   String? get subnet;
   @override
   String? get mac;
+
+  /// Default gateway. Only meaningful on hosts (pc/server).
   @override
   String? get gateway;
+
+  /// 'up' | 'down'. Administrative state.
+  @override
+  String get status;
+
+  /// VLAN id, or null for an untagged port.
+  @override
+  int? get vlan;
+
+  /// Only meaningful on firewalls; evaluated hop-by-hop by the tracer.
+  @override
+  List<AclRule> get acls;
 
   /// Create a copy of InterfaceConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -438,6 +769,9 @@ mixin _$DeviceNode {
   String get model => throw _privateConstructorUsedError;
   Position get position => throw _privateConstructorUsedError;
   List<InterfaceConfig> get interfaces => throw _privateConstructorUsedError;
+
+  /// Only meaningful on routers. Read by the `ospf_adjacency` criterion.
+  bool get ospfEnabled => throw _privateConstructorUsedError;
 
   /// Serializes this DeviceNode to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -463,6 +797,7 @@ abstract class $DeviceNodeCopyWith<$Res> {
     String model,
     Position position,
     List<InterfaceConfig> interfaces,
+    bool ospfEnabled,
   });
 
   $PositionCopyWith<$Res> get position;
@@ -489,6 +824,7 @@ class _$DeviceNodeCopyWithImpl<$Res, $Val extends DeviceNode>
     Object? model = null,
     Object? position = null,
     Object? interfaces = null,
+    Object? ospfEnabled = null,
   }) {
     return _then(
       _value.copyWith(
@@ -516,6 +852,10 @@ class _$DeviceNodeCopyWithImpl<$Res, $Val extends DeviceNode>
                 ? _value.interfaces
                 : interfaces // ignore: cast_nullable_to_non_nullable
                       as List<InterfaceConfig>,
+            ospfEnabled: null == ospfEnabled
+                ? _value.ospfEnabled
+                : ospfEnabled // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -548,6 +888,7 @@ abstract class _$$DeviceNodeImplCopyWith<$Res>
     String model,
     Position position,
     List<InterfaceConfig> interfaces,
+    bool ospfEnabled,
   });
 
   @override
@@ -574,6 +915,7 @@ class __$$DeviceNodeImplCopyWithImpl<$Res>
     Object? model = null,
     Object? position = null,
     Object? interfaces = null,
+    Object? ospfEnabled = null,
   }) {
     return _then(
       _$DeviceNodeImpl(
@@ -601,6 +943,10 @@ class __$$DeviceNodeImplCopyWithImpl<$Res>
             ? _value._interfaces
             : interfaces // ignore: cast_nullable_to_non_nullable
                   as List<InterfaceConfig>,
+        ospfEnabled: null == ospfEnabled
+            ? _value.ospfEnabled
+            : ospfEnabled // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -616,6 +962,7 @@ class _$DeviceNodeImpl implements _DeviceNode {
     required this.model,
     required this.position,
     final List<InterfaceConfig> interfaces = const [],
+    this.ospfEnabled = false,
   }) : _interfaces = interfaces;
 
   factory _$DeviceNodeImpl.fromJson(Map<String, dynamic> json) =>
@@ -641,9 +988,14 @@ class _$DeviceNodeImpl implements _DeviceNode {
     return EqualUnmodifiableListView(_interfaces);
   }
 
+  /// Only meaningful on routers. Read by the `ospf_adjacency` criterion.
+  @override
+  @JsonKey()
+  final bool ospfEnabled;
+
   @override
   String toString() {
-    return 'DeviceNode(nodeId: $nodeId, label: $label, type: $type, model: $model, position: $position, interfaces: $interfaces)';
+    return 'DeviceNode(nodeId: $nodeId, label: $label, type: $type, model: $model, position: $position, interfaces: $interfaces, ospfEnabled: $ospfEnabled)';
   }
 
   @override
@@ -660,7 +1012,9 @@ class _$DeviceNodeImpl implements _DeviceNode {
             const DeepCollectionEquality().equals(
               other._interfaces,
               _interfaces,
-            ));
+            ) &&
+            (identical(other.ospfEnabled, ospfEnabled) ||
+                other.ospfEnabled == ospfEnabled));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -673,6 +1027,7 @@ class _$DeviceNodeImpl implements _DeviceNode {
     model,
     position,
     const DeepCollectionEquality().hash(_interfaces),
+    ospfEnabled,
   );
 
   /// Create a copy of DeviceNode
@@ -698,6 +1053,7 @@ abstract class _DeviceNode implements DeviceNode {
     required final String model,
     required final Position position,
     final List<InterfaceConfig> interfaces,
+    final bool ospfEnabled,
   }) = _$DeviceNodeImpl;
 
   factory _DeviceNode.fromJson(Map<String, dynamic> json) =
@@ -716,6 +1072,10 @@ abstract class _DeviceNode implements DeviceNode {
   Position get position;
   @override
   List<InterfaceConfig> get interfaces;
+
+  /// Only meaningful on routers. Read by the `ospf_adjacency` criterion.
+  @override
+  bool get ospfEnabled;
 
   /// Create a copy of DeviceNode
   /// with the given fields replaced by the non-null parameter values.

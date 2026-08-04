@@ -15,6 +15,22 @@ _$PositionImpl _$$PositionImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$PositionImplToJson(_$PositionImpl instance) =>
     <String, dynamic>{'x': instance.x, 'y': instance.y};
 
+_$AclRuleImpl _$$AclRuleImplFromJson(Map<String, dynamic> json) =>
+    _$AclRuleImpl(
+      action: json['action'] as String? ?? 'deny',
+      protocol: json['protocol'] as String? ?? 'any',
+      src: json['src'] as String? ?? 'any',
+      dst: json['dst'] as String? ?? 'any',
+    );
+
+Map<String, dynamic> _$$AclRuleImplToJson(_$AclRuleImpl instance) =>
+    <String, dynamic>{
+      'action': instance.action,
+      'protocol': instance.protocol,
+      'src': instance.src,
+      'dst': instance.dst,
+    };
+
 _$InterfaceConfigImpl _$$InterfaceConfigImplFromJson(
   Map<String, dynamic> json,
 ) => _$InterfaceConfigImpl(
@@ -23,6 +39,13 @@ _$InterfaceConfigImpl _$$InterfaceConfigImplFromJson(
   subnet: json['subnet'] as String?,
   mac: json['mac'] as String?,
   gateway: json['gateway'] as String?,
+  status: json['status'] as String? ?? 'up',
+  vlan: (json['vlan'] as num?)?.toInt(),
+  acls:
+      (json['acls'] as List<dynamic>?)
+          ?.map((e) => AclRule.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <AclRule>[],
 );
 
 Map<String, dynamic> _$$InterfaceConfigImplToJson(
@@ -33,6 +56,9 @@ Map<String, dynamic> _$$InterfaceConfigImplToJson(
   'subnet': instance.subnet,
   'mac': instance.mac,
   'gateway': instance.gateway,
+  'status': instance.status,
+  'vlan': instance.vlan,
+  'acls': instance.acls,
 };
 
 _$DeviceNodeImpl _$$DeviceNodeImplFromJson(Map<String, dynamic> json) =>
@@ -51,6 +77,7 @@ _$DeviceNodeImpl _$$DeviceNodeImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => InterfaceConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      ospfEnabled: json['ospfEnabled'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$DeviceNodeImplToJson(_$DeviceNodeImpl instance) =>
@@ -61,6 +88,7 @@ Map<String, dynamic> _$$DeviceNodeImplToJson(_$DeviceNodeImpl instance) =>
       'model': instance.model,
       'position': instance.position,
       'interfaces': instance.interfaces,
+      'ospfEnabled': instance.ospfEnabled,
     };
 
 const _$DeviceTypeEnumMap = {

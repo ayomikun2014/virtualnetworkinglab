@@ -10,6 +10,7 @@ import '../providers/topology_provider.dart';
 import '../widgets/cable_painter.dart';
 import '../widgets/canvas_grid_painter.dart';
 import '../widgets/device_palette.dart';
+import '../widgets/node_property_inspector.dart';
 
 /// 5-Layer Interactive Topology Canvas Engine Workspace Screen
 class CanvasBuilderScreen extends StatefulWidget {
@@ -116,11 +117,16 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                                     ),
 
                                   // Layer 3: Interactive Positioned Device Nodes
+                                  //
+                                  // RepaintBoundary per node so dragging one
+                                  // device doesn't repaint the whole node layer.
                                   if (topology != null)
                                     ...topology.nodes.map((node) {
-                                      return _buildInteractiveNode(
-                                        provider,
-                                        node,
+                                      return RepaintBoundary(
+                                        child: _buildInteractiveNode(
+                                          provider,
+                                          node,
+                                        ),
                                       );
                                     }),
                                 ],
@@ -143,6 +149,18 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                         ],
                       ),
                     ),
+
+                    // Property inspector for the selected device. This is what
+                    // lets a student set IP / mask / gateway / VLAN / status /
+                    // ACLs, which the grader's criteria depend on.
+                    if (provider.selectedNode != null)
+                      NodePropertyInspector(
+                        node: provider.selectedNode!,
+                        onNodeChanged: provider.updateNode,
+                        onClose: () => provider.selectNode(null),
+                        onDeleteNode: () =>
+                            provider.deleteNode(provider.selectedNode!.nodeId),
+                      ),
                   ],
                 ),
               ),
@@ -313,10 +331,18 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
               );
             },
             onPanEnd: (_) {
+              // Use the provider's live unsnapped drag position, not
+              // `node.position` from this closure: `node` was captured when the
+              // widget was built, so it holds the pre-drag coordinates and the
+              // device would jump back to where the gesture started.
+              final finalPos =
+                  provider.dragPosition ??
+                  Offset(node.position.x, node.position.y);
+
               provider.updateNodePosition(
                 node.nodeId,
-                node.position.x,
-                node.position.y,
+                finalPos.dx,
+                finalPos.dy,
                 isPanEnd: true,
               );
             },
@@ -549,25 +575,50 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
 
     final newNode = DeviceNode(
       nodeId: 'node_${DateTime.now().millisecondsSinceEpoch}',
-      label: '${type.name.toUpperCase()}_$count',
+      label: _defaultLabelFor(type, existingNodes),
       type: type,
       model: model,
       position: Position(x: startX, y: startY),
-      interfaces: [
-        InterfaceConfig(
-          name: 'eth0',
-          ip: '192.168.1.$count',
-          subnet: '255.255.255.0',
-        ),
-        InterfaceConfig(
-          name: 'eth1',
-          ip: '10.0.0.$count',
-          subnet: '255.255.255.0',
-        ),
-      ],
+      interfaces: _defaultInterfacesFor(type),
     );
 
     provider.addDeviceNode(newNode);
+  }
+
+  /// Port count per device type.
+  ///
+  /// Interfaces deliberately start with NO IP address. Addressing is the thing
+  /// the student is being taught, so pre-filling 192.168.1.x would hand them
+  /// the answer to most of the addressing levels (and quietly put every device
+  /// on the same subnet, which made unrelated levels pass by accident).
+  static List<InterfaceConfig> _defaultInterfacesFor(DeviceType type) {
+    final portCount = switch (type) {
+      DeviceType.pc => 1,
+      DeviceType.server => 1,
+      DeviceType.router => 2,
+      DeviceType.firewall => 2,
+      DeviceType.switchDevice => 4,
+      DeviceType.cloud => 1,
+    };
+
+    return List.generate(portCount, (i) => InterfaceConfig(name: 'eth$i'));
+  }
+
+  /// Human-friendly, per-type sequential name: PC1, PC2, Router1, ...
+  /// Level criteria refer to devices by these labels, so they must be stable
+  /// and predictable rather than based on total node count.
+  static String _defaultLabelFor(DeviceType type, List<DeviceNode> existing) {
+    final prefix = switch (type) {
+      DeviceType.pc => 'PC',
+      DeviceType.server => 'Server',
+      DeviceType.router => 'Router',
+      DeviceType.switchDevice => 'Switch',
+      DeviceType.firewall => 'Firewall',
+      DeviceType.cloud => 'Cloud',
+    };
+
+    final sameType = existing.where((n) => n.type == type).length;
+    return '$prefix${sameType + 1}';
   }
 
   void _handleCableConnectionDialog(TopologyProvider provider) {
