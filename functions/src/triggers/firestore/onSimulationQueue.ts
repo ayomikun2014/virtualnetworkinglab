@@ -10,9 +10,14 @@ import { generateHmacSignature } from "../../utils/hmac";
  * Firestore Trigger (v2) triggered when a new simulation job is enqueued in
  * `/virtuanetlab/app/simulation_queue/{queueId}`.
  *
+ * THIS IS THE ONLY DISPATCHER. The Flutter client used to also POST directly to
+ * the engine, so two simulations ran per click and raced on this document. That
+ * path has been deleted. The client's only job is to write the queue document.
+ *
  * Workflow:
  * 1. Fetches topology JSON from `/virtuanetlab/app/topologies/{topologyId}`.
- * 2. Fetches solution key/criteria if exercise ID is present (`/virtuanetlab/app/exercises/{exerciseId}/private/solution_key`).
+ * 2. Resolves the grading criteria SERVER-SIDE, from either the level or the
+ *    exercise solution key. Criteria are never taken from the client.
  * 3. Updates queue document status to `'processing'`.
  * 4. Generates HMAC-SHA256 signature header.
  * 5. Dispatches HTTP POST payload to Python FastAPI Engine on Cloud Run.
@@ -34,9 +39,15 @@ export const onSimulationQueueCreatedHandler = onDocumentCreated(
 
     const queueId = event.params.queueId;
     const queueData = snap.data();
-    const { topologyId, exerciseId, userId, pingSource, pingTarget } = queueData;
+    const { topologyId, exerciseId, levelId, topicId, userId, pingSource, pingTarget } =
+      queueData;
 
-    logger.info(`Processing simulation queue job: ${queueId}`, { topologyId, exerciseId, userId });
+    logger.info(`Processing simulation queue job: ${queueId}`, {
+      topologyId,
+      exerciseId,
+      levelId,
+      userId,
+    });
 
     const db = admin.firestore();
     const queueDocRef = db.doc(`virtuanetlab/app/simulation_queue/${queueId}`);
@@ -60,9 +71,29 @@ export const onSimulationQueueCreatedHandler = onDocumentCreated(
         }
       }
 
-      // 3. Fetch exercise solution key / target criteria if exerciseId provided
+      // 3. Resolve grading criteria SERVER-SIDE.
+      //
+      // The client sends only `levelId` / `exerciseId`, never the criteria
+      // themselves. If it did, a student could submit an empty criteria list
+      // and score 100% on every level.
       let targetCriteria: any[] = [];
-      if (exerciseId) {
+      let passMark = 70; // default pass mark, may be overridden per level
+
+      if (levelId) {
+        const levelSnap = await db.doc(`virtuanetlab/app/levels/${levelId}`).get();
+        if (levelSnap.exists) {
+          const level = levelSnap.data() || {};
+          targetCriteria = level.successCriteria || [];
+          if (typeof level.passMark === "number") {
+            passMark = level.passMark;
+          }
+          logger.info(
+            `Loaded ${targetCriteria.length} criteria for level '${levelId}' (passMark ${passMark}).`
+          );
+        } else {
+          logger.warn(`Level document '${levelId}' not found for queue item '${queueId}'.`);
+        }
+      } else if (exerciseId) {
         const solutionSnap = await db.doc(`virtuanetlab/app/exercises/${exerciseId}/private/solution_key`).get();
         if (solutionSnap.exists) {
           const rawSol = solutionSnap.data() || {};
@@ -78,12 +109,25 @@ export const onSimulationQueueCreatedHandler = onDocumentCreated(
         userId: userId || "anonymous",
         topologyData,
         targetCriteria,
+        passMark,
+        levelId: levelId || null,
+        topicId: topicId || null,
         pingSource: pingSource || null,
         pingTarget: pingTarget || null,
       };
 
-      // 5. Compute HMAC-SHA256 signature
-      const secret = HMAC_SECRET_KEY.value() || process.env.HMAC_SECRET_KEY || "vnl-default-secret-key-change-in-production";
+      // 5. Compute HMAC-SHA256 signature.
+      //
+      // No default fallback secret: an unset secret is a deployment fault and
+      // must fail loudly rather than silently signing with a value that is
+      // published in the source tree.
+      const secret = HMAC_SECRET_KEY.value() || process.env.HMAC_SECRET_KEY;
+      if (!secret || secret === "vnl-default-secret-key-change-in-production") {
+        throw new Error(
+          "HMAC_SECRET_KEY is unset or still the default placeholder. Set a real " +
+            "secret via Secret Manager before dispatching simulations."
+        );
+      }
       const signatureHeader = generateHmacSignature(payload, secret);
 
       // 6. Post request to Python FastAPI Cloud Run engine

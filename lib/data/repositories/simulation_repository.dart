@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/failures.dart';
 
@@ -10,6 +8,8 @@ abstract class ISimulationRepository {
     required String topologyId,
     required String userId,
     String? exerciseId,
+    String? levelId,
+    String? topicId,
     String? pingSource,
     String? pingTarget,
   });
@@ -23,6 +23,27 @@ abstract class ISimulationRepository {
 }
 
 /// Firebase & Cloud Firestore implementation of Simulation Repository
+///
+/// DISPATCH MODEL — read before changing.
+///
+/// Writing the queue document is the ONLY thing the client does to start a
+/// simulation. The `onSimulationQueueCreated` Cloud Function trigger picks the
+/// document up, signs the payload with HMAC-SHA256 and POSTs it to the FastAPI
+/// engine. That function is the single dispatcher.
+///
+/// This class used to ALSO POST straight to `http://localhost:8080`, which
+/// meant two simulations ran for every click. They raced on the same queue
+/// document and produced two result documents. The direct path was also
+/// unsigned (it only worked because the engine allows missing signatures when
+/// ENV=development) and hard-coded localhost, so it was dead in any deployed
+/// build. It has been removed deliberately. Do not reintroduce it: the client
+/// must never hold the HMAC secret or know the engine's address.
+///
+/// GRADING CRITERIA ARE NOT SENT FROM HERE, ON PURPOSE. The client only names
+/// which level it is attempting (`levelId`). The Cloud Function loads that
+/// level's success criteria and pass mark from Firestore itself. If the client
+/// supplied the criteria, a student could submit an empty list and pass every
+/// level instantly.
 class FirebaseSimulationRepository implements ISimulationRepository {
   final FirebaseFirestore _firestore;
 
@@ -34,6 +55,8 @@ class FirebaseSimulationRepository implements ISimulationRepository {
     required String topologyId,
     required String userId,
     String? exerciseId,
+    String? levelId,
+    String? topicId,
     String? pingSource,
     String? pingTarget,
   }) async {
@@ -48,6 +71,8 @@ class FirebaseSimulationRepository implements ISimulationRepository {
         'topologyId': topologyId,
         'userId': userId,
         'exerciseId': ?exerciseId,
+        'levelId': ?levelId,
+        'topicId': ?topicId,
         'pingSource': ?pingSource,
         'pingTarget': ?pingTarget,
         'status': 'queued',
@@ -55,66 +80,12 @@ class FirebaseSimulationRepository implements ISimulationRepository {
         'requestedAt': FieldValue.serverTimestamp(),
       };
 
+      // Single write. The Cloud Function trigger takes it from here.
       await docRef.set(payload);
-
-      // Direct Local Dispatch to Python FastAPI Simulation Engine
-      _dispatchDirectToPythonEngine(
-        queueId: queueId,
-        topologyId: topologyId,
-        userId: userId,
-        pingSource: pingSource,
-        pingTarget: pingTarget,
-      );
 
       return queueId;
     } catch (e) {
       throw ServerFailure('Failed to enqueue simulation job: $e');
-    }
-  }
-
-  /// Direct HTTP POST dispatch to local Python FastAPI Engine
-  void _dispatchDirectToPythonEngine({
-    required String queueId,
-    required String topologyId,
-    required String userId,
-    String? pingSource,
-    String? pingTarget,
-  }) async {
-    try {
-      // Fetch topology graph JSON from Firestore
-      final topSnap = await _firestore
-          .collection(AppConstants.topologiesCollection)
-          .doc(topologyId)
-          .get();
-      final topData = topSnap.data() ?? {};
-
-      final reqPayload = {
-        'queueId': queueId,
-        'userId': userId,
-        'topologyData': topData['topologyData'] ?? topData,
-        'targetCriteria': [],
-        'pingSource': pingSource,
-        'pingTarget': pingTarget,
-      };
-
-      final url = Uri.parse('http://localhost:8080/api/v1/simulate');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(reqPayload),
-      );
-
-      if (response.statusCode != 200) {
-        // Fallback try 127.0.0.1
-        final altUrl = Uri.parse('http://127.0.0.1:8080/api/v1/simulate');
-        await http.post(
-          altUrl,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(reqPayload),
-        );
-      }
-    } catch (e) {
-      // If direct HTTP POST fails, job remains in Firestore queue for Cloud Function worker
     }
   }
 
