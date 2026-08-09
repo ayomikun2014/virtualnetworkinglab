@@ -1163,19 +1163,17 @@ class _CoursesLabViewState extends State<CoursesLabView> {
               // Join Class lives here rather than on the dashboard: entering
               // a code is what adds a course to this very list, so the
               // action and its result are now in the same place.
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Courses Lab',
-                      style: TextStyle(
-                        color: AppTheme.textBright,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const title = Text(
+                    'Courses Lab',
+                    style: TextStyle(
+                      color: AppTheme.textBright,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  OutlinedButton.icon(
+                  );
+                  final joinButton = OutlinedButton.icon(
                     icon: const Icon(
                       Icons.group_add,
                       size: 18,
@@ -1192,8 +1190,29 @@ class _CoursesLabViewState extends State<CoursesLabView> {
                       context,
                       user?.uid ?? 'demo',
                     ),
-                  ),
-                ],
+                  );
+
+                  // Below this width the button's icon+label eats enough of
+                  // the row that "Courses Lab" gets squeezed into a sliver
+                  // and wraps letter by letter. Stack instead.
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        title,
+                        const SizedBox(height: 10),
+                        SizedBox(width: double.infinity, child: joinButton),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      const Expanded(child: title),
+                      joinButton,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 8),
               const Text(
@@ -1284,8 +1303,12 @@ class _CoursesLabViewState extends State<CoursesLabView> {
     required VoidCallback onTap,
   }) {
     final total = group.assessments.length;
-    final passed = group.assessments
-        .where((e) => progressProvider.progressFor(e.exerciseId).passed)
+    // A course assessment only ever gets one attempt, so "complete" means
+    // submitted, not passed — otherwise a student who submitted every
+    // assessment but failed one would see a count that looks like they
+    // still have something left to do, when there is nothing left to do.
+    final completed = group.assessments
+        .where((e) => progressProvider.progressFor(e.exerciseId).attemptCount > 0)
         .length;
 
     return Material(
@@ -1330,7 +1353,7 @@ class _CoursesLabViewState extends State<CoursesLabView> {
                     Text(
                       total == 0
                           ? 'No assessments published yet'
-                          : '$passed / $total assessment${total == 1 ? '' : 's'} complete',
+                          : '$completed / $total assessment${total == 1 ? '' : 's'} complete',
                       style: const TextStyle(
                         color: AppTheme.textMuted,
                         fontSize: 12,
@@ -1404,13 +1427,20 @@ class _CoursesLabViewState extends State<CoursesLabView> {
     // "done" are the same thing.
     final isSubmitted = progress.attemptCount > 0;
     final isCompleted = progress.passed;
+    // A lecturer can lock an assessment closed to whoever hasn't attempted
+    // it yet — someone who already submitted keeps their result untouched.
+    final isLockedOut = exercise.isLocked && !isSubmitted;
     final statusColor = isCompleted
         ? AppTheme.accentEmerald
         : isSubmitted
         ? Colors.amber
+        : isLockedOut
+        ? AppTheme.accentCrimson
         : AppTheme.textMuted;
     final statusLabel = isSubmitted
         ? 'SUBMITTED'
+        : isLockedOut
+        ? 'LOCKED'
         : 'NOT STARTED';
 
     return Container(
@@ -1533,18 +1563,29 @@ class _CoursesLabViewState extends State<CoursesLabView> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              icon: Icon(isSubmitted ? Icons.lock : Icons.launch, size: 18),
+              icon: Icon(
+                isSubmitted || isLockedOut ? Icons.lock : Icons.launch,
+                size: 18,
+              ),
               label: Text(
-                isSubmitted ? 'Submitted — Locked' : 'Open & Build',
+                isSubmitted
+                    ? 'Submitted — Locked'
+                    : isLockedOut
+                    ? 'Locked by Lecturer'
+                    : 'Open & Build',
               ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(14),
-                backgroundColor: isSubmitted ? AppTheme.textMuted : null,
+                backgroundColor: (isSubmitted || isLockedOut)
+                    ? AppTheme.textMuted
+                    : null,
               ),
               // Locked after the one and only attempt — pass or fail. A
               // course assessment is single-shot; re-submitting isn't an
-              // option to leave open even for someone who failed it.
-              onPressed: (isSubmitted || uid == null)
+              // option to leave open even for someone who failed it. A
+              // lecturer's lock closes it the same way for anyone who
+              // hasn't attempted it yet.
+              onPressed: (isSubmitted || isLockedOut || uid == null)
                   ? null
                   : () => context.go(
                       '/canvas-builder/assessment_${exercise.exerciseId}_$uid'
@@ -1569,9 +1610,7 @@ class _CoursesLabViewState extends State<CoursesLabView> {
         : ' — ${score.round()}% '
               '(${progress.correctChecks}/${progress.totalChecks} correct)';
 
-    return progress.passed
-        ? 'Submitted$scoreText'
-        : 'Submitted — not passed$scoreText';
+    return 'Submitted$scoreText';
   }
 }
 

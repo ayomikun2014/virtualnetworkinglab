@@ -25,6 +25,7 @@ class NodePropertyInspector extends StatefulWidget {
     required this.onNodeChanged,
     required this.onClose,
     this.onDeleteNode,
+    this.width = 320,
   });
 
   final DeviceNode node;
@@ -33,6 +34,12 @@ class NodePropertyInspector extends StatefulWidget {
   final ValueChanged<DeviceNode> onNodeChanged;
   final VoidCallback onClose;
   final VoidCallback? onDeleteNode;
+
+  /// Fixed panel width on desktop, where it sits beside the canvas. On
+  /// mobile the caller passes `double.infinity` so it fills the screen
+  /// edge-to-edge instead of floating as an odd-sized overlay with a sliver
+  /// of canvas still visible down one side.
+  final double width;
 
   @override
   State<NodePropertyInspector> createState() => _NodePropertyInspectorState();
@@ -57,7 +64,7 @@ class _NodePropertyInspectorState extends State<NodePropertyInspector> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 320,
+      width: widget.width,
       decoration: BoxDecoration(
         color: const Color(0xFF12182B),
         border: Border(left: BorderSide(color: Colors.white24)),

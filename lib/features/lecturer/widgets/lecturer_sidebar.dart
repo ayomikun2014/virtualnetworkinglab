@@ -26,6 +26,11 @@ const List<LecturerNavItem> kLecturerNavItems = [
     label: 'Exercise Authoring',
   ),
   LecturerNavItem(index: 2, icon: Icons.grade, label: 'Grading Center'),
+  LecturerNavItem(
+    index: 3,
+    icon: Icons.rule_folder_outlined,
+    label: 'Manage Exercises',
+  ),
 ];
 
 /// Persistent Desktop Sidebar for Lecturer Dashboard

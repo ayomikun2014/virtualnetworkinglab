@@ -5,6 +5,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../views/exercise_authoring_tab.dart';
 import '../views/grading_center_tab.dart';
 import '../views/lecturer_overview_tab.dart';
+import '../views/manage_exercises_tab.dart';
 import '../widgets/lecturer_sidebar.dart';
 
 /// Lecturer Portal Master Layout Shell & Tab Controller
@@ -22,6 +23,7 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
     'Faculty Class Analytics Hub',
     'Lab Exercise Authoring Wizard',
     'Submissions & Grading Center',
+    'Manage Exercises',
   ];
 
   void _onTabSelected(int index) {
@@ -143,6 +145,8 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
         return const ExerciseAuthoringTab();
       case 2:
         return const GradingCenterTab();
+      case 3:
+        return const ManageExercisesTab();
       default:
         return LecturerOverviewTab(onNavigateTab: _onTabSelected);
     }

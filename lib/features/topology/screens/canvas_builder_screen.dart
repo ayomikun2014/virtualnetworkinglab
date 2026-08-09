@@ -96,6 +96,16 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
   bool _dragMoved = false;
   bool _canvasPanEnabled = true;
 
+  /// Whether the property inspector is open for the selected device.
+  ///
+  /// Selecting a device (a plain tap) only highlights it — the device
+  /// already shows its own icon and label on the canvas, so popping a full
+  /// editor panel on every tap meant students couldn't glance at the
+  /// topology without the screen being taken over. Opening the inspector is
+  /// now a deliberate second action: the small edit icon that appears on a
+  /// selected device.
+  bool _showInspector = false;
+
   /// Medium used for the next cable drawn via port-to-port click. Previously
   /// hardcoded to 'Ethernet' in _handlePortClick, so CablePainter's
   /// per-type colours (cyan/amber/crimson) were unreachable through the
@@ -315,9 +325,15 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                               ),
                             ),
 
-                          // Inspector Overlay
-                          if (provider.selectedNode != null)
+                          // Inspector Overlay — only once the student taps
+                          // the edit icon on a selected device, not on
+                          // selection itself. Full width on mobile so it
+                          // reads as a deliberate full-screen editor instead
+                          // of a fixed-width sidebar leaving a sliver of
+                          // canvas visible down one edge.
+                          if (_showInspector && provider.selectedNode != null)
                             Positioned(
+                              left: 0,
                               right: 0,
                               top: 0,
                               bottom: 0,
@@ -333,10 +349,11 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                                 child: NodePropertyInspector(
                                   node: provider.selectedNode!,
                                   onNodeChanged: provider.updateNode,
-                                  onClose: () => provider.selectNode(null),
+                                  onClose: () => _closeInspector(provider),
                                   onDeleteNode: () => provider.deleteNode(
                                     provider.selectedNode!.nodeId,
                                   ),
+                                  width: double.infinity,
                                 ),
                               ),
                             ),
@@ -353,11 +370,11 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                           Expanded(
                             child: _buildCanvasViewport(provider, topology),
                           ),
-                          if (provider.selectedNode != null)
+                          if (_showInspector && provider.selectedNode != null)
                             NodePropertyInspector(
                               node: provider.selectedNode!,
                               onNodeChanged: provider.updateNode,
-                              onClose: () => provider.selectNode(null),
+                              onClose: () => _closeInspector(provider),
                               onDeleteNode: () => provider.deleteNode(
                                 provider.selectedNode!.nodeId,
                               ),
@@ -1459,6 +1476,48 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
                 ),
               ),
             ),
+
+            // Edit Properties Handle — only once selected, so a plain tap
+            // just highlights the device instead of always popping the
+            // full inspector open.
+            if (isSelected)
+              Positioned(
+                top: -10,
+                left: 35,
+                child: Tooltip(
+                  message: 'Edit device properties',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => setState(() => _showInspector = true),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryCyan,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.backgroundMidnight,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryCyan.withValues(
+                              alpha: 0.6,
+                            ),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.tune,
+                        color: AppTheme.backgroundMidnight,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1514,6 +1573,11 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
     );
   }
 
+  void _closeInspector(TopologyProvider provider) {
+    provider.selectNode(null);
+    setState(() => _showInspector = false);
+  }
+
   void _handleNodePointerUp(
     TopologyProvider provider,
     DeviceNode node,
@@ -1533,6 +1597,9 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
       );
     } else {
       provider.selectNode(node.nodeId);
+      // A plain tap only selects/highlights — never re-opens the inspector
+      // for whichever device happened to be selected before.
+      if (_showInspector) setState(() => _showInspector = false);
     }
 
     _draggingNodeId = null;

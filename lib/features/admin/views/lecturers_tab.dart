@@ -61,7 +61,11 @@ class _LecturersTabState extends State<LecturersTab> {
               ),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 480,
+                  // Fixed on desktop; on a narrow phone a hard 480 would
+                  // force the dialog wider than the screen itself.
+                  width: MediaQuery.of(context).size.width < 560
+                      ? MediaQuery.of(context).size.width * 0.82
+                      : 480,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +241,11 @@ class _LecturersTabState extends State<LecturersTab> {
               ),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 480,
+                  // Fixed on desktop; on a narrow phone a hard 480 would
+                  // force the dialog wider than the screen itself.
+                  width: MediaQuery.of(context).size.width < 560
+                      ? MediaQuery.of(context).size.width * 0.82
+                      : 480,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,64 +470,97 @@ class _LecturersTabState extends State<LecturersTab> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              backgroundColor: Colors.amber,
-                              child: Icon(
-                                Icons.hourglass_top,
-                                color: AppTheme.backgroundMidnight,
-                                size: 18,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final identity = Row(
+                              children: [
+                                const CircleAvatar(
+                                  backgroundColor: Colors.amber,
+                                  child: Icon(
+                                    Icons.hourglass_top,
+                                    color: AppTheme.backgroundMidnight,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppTheme.textBright,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$email • $dept',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppTheme.textMuted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                            final actions = [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: AppTheme.accentCrimson,
+                                ),
+                                tooltip: 'Reject',
+                                onPressed: () => _confirmReject(
+                                  context,
+                                  uid: uid,
+                                  displayName: name,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.check, size: 16),
+                                label: const Text('Approve'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.accentEmerald,
+                                ),
+                                onPressed: () => _showApproveModal(
+                                  context,
+                                  uid: uid,
+                                  displayName: name,
+                                ),
+                              ),
+                            ];
+
+                            // The Reject icon + "Approve" button together run
+                            // wide enough that below this width they'd
+                            // squeeze the name/email column down to almost
+                            // nothing — put them on their own row instead.
+                            if (constraints.maxWidth < 420) {
+                              return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: AppTheme.textBright,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$email • $dept',
-                                    style: const TextStyle(
-                                      color: AppTheme.textMuted,
-                                      fontSize: 12,
-                                    ),
+                                  identity,
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: actions,
                                   ),
                                 ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: AppTheme.accentCrimson,
-                              ),
-                              tooltip: 'Reject',
-                              onPressed: () => _confirmReject(
-                                context,
-                                uid: uid,
-                                displayName: name,
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.check, size: 16),
-                              label: const Text('Approve'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.accentEmerald,
-                              ),
-                              onPressed: () => _showApproveModal(
-                                context,
-                                uid: uid,
-                                displayName: name,
-                              ),
-                            ),
-                          ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: identity),
+                                ...actions,
+                              ],
+                            );
+                          },
                         ),
                       ),
                     );
@@ -636,6 +677,7 @@ class _LecturersTabState extends State<LecturersTab> {
                                 children: [
                                   Text(
                                     name,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: AppTheme.textBright,
                                       fontWeight: FontWeight.bold,
@@ -644,6 +686,7 @@ class _LecturersTabState extends State<LecturersTab> {
                                   ),
                                   Text(
                                     '$email • ${departmentLabel(deptId)}',
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: AppTheme.textMuted,
                                       fontSize: 12,

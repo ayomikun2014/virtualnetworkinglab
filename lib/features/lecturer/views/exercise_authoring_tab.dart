@@ -338,92 +338,108 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Row: Type, Difficulty, Max Score
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _type,
-                          dropdownColor: AppTheme.surfaceGlass,
-                          style: const TextStyle(color: AppTheme.textBright),
-                          decoration: const InputDecoration(
-                            labelText: 'Exercise Category',
-                            prefixIcon: Icon(
-                              Icons.category,
-                              color: AppTheme.primaryCyan,
-                            ),
+                  // Type, Difficulty, Max Score — each dropdown needs real
+                  // width for its prefix icon + label + value text, so on a
+                  // narrow screen these stack instead of squeezing into one
+                  // Row (three fields in ~300px was overflowing by 17-58px).
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final typeField = DropdownButtonFormField<String>(
+                        initialValue: _type,
+                        dropdownColor: AppTheme.surfaceGlass,
+                        style: const TextStyle(color: AppTheme.textBright),
+                        decoration: const InputDecoration(
+                          labelText: 'Exercise Category',
+                          prefixIcon: Icon(
+                            Icons.category,
+                            color: AppTheme.primaryCyan,
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'routing',
-                              child: Text('Routing & OSPF'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'switching',
-                              child: Text('Switching & VLANs'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'subnetting',
-                              child: Text('Subnetting & VLSM'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'security',
-                              child: Text('Security & ACLs'),
-                            ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'routing',
+                            child: Text('Routing & OSPF'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'switching',
+                            child: Text('Switching & VLANs'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'subnetting',
+                            child: Text('Subnetting & VLSM'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'security',
+                            child: Text('Security & ACLs'),
+                          ),
+                        ],
+                        onChanged: (val) => setState(() => _type = val!),
+                      );
+                      final difficultyField = DropdownButtonFormField<String>(
+                        initialValue: _difficulty,
+                        dropdownColor: AppTheme.surfaceGlass,
+                        style: const TextStyle(color: AppTheme.textBright),
+                        decoration: const InputDecoration(
+                          labelText: 'Difficulty Level',
+                          prefixIcon: Icon(
+                            Icons.speed,
+                            color: AppTheme.primaryCyan,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'beginner',
+                            child: Text('Beginner'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'intermediate',
+                            child: Text('Intermediate'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'advanced',
+                            child: Text('Advanced'),
+                          ),
+                        ],
+                        onChanged: (val) => setState(() => _difficulty = val!),
+                      );
+                      final maxScoreField = TextFormField(
+                        controller: _maxScoreController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: AppTheme.textBright),
+                        decoration: const InputDecoration(
+                          labelText: 'Max Score',
+                          prefixIcon: Icon(
+                            Icons.grade,
+                            color: AppTheme.primaryCyan,
+                          ),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? 'Enter score' : null,
+                      );
+
+                      if (constraints.maxWidth < 560) {
+                        return Column(
+                          children: [
+                            typeField,
+                            const SizedBox(height: 16),
+                            difficultyField,
+                            const SizedBox(height: 16),
+                            maxScoreField,
                           ],
-                          onChanged: (val) => setState(() => _type = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _difficulty,
-                          dropdownColor: AppTheme.surfaceGlass,
-                          style: const TextStyle(color: AppTheme.textBright),
-                          decoration: const InputDecoration(
-                            labelText: 'Difficulty Level',
-                            prefixIcon: Icon(
-                              Icons.speed,
-                              color: AppTheme.primaryCyan,
-                            ),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'beginner',
-                              child: Text('Beginner'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'intermediate',
-                              child: Text('Intermediate'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'advanced',
-                              child: Text('Advanced'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => _difficulty = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: 140,
-                        child: TextFormField(
-                          controller: _maxScoreController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: AppTheme.textBright),
-                          decoration: const InputDecoration(
-                            labelText: 'Max Score',
-                            prefixIcon: Icon(
-                              Icons.grade,
-                              color: AppTheme.primaryCyan,
-                            ),
-                          ),
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Enter score' : null,
-                        ),
-                      ),
-                    ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: typeField),
+                          const SizedBox(width: 16),
+                          Expanded(child: difficultyField),
+                          const SizedBox(width: 16),
+                          SizedBox(width: 140, child: maxScoreField),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -489,6 +505,52 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
     final hasSolution = _solutionDeviceCount > 0;
     final accent = hasSolution ? AppTheme.accentEmerald : Colors.amber;
 
+    final icon = Icon(
+      hasSolution ? Icons.verified : Icons.architecture,
+      color: accent,
+      size: 28,
+    );
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          hasSolution
+              ? 'Solution designed — this is the answer key'
+              : 'No solution designed yet',
+          style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          _isCheckingSolution
+              ? 'Checking saved canvas…'
+              : hasSolution
+              ? '$_solutionDeviceCount device'
+                    '${_solutionDeviceCount == 1 ? '' : 's'}, '
+                    '$_solutionCableCount cable'
+                    '${_solutionCableCount == 1 ? '' : 's'}. '
+                    'Students must reproduce this to pass.'
+              : 'Open the canvas, place the devices and connect them '
+                    'the correct way, then press Save Canvas.',
+          style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+        ),
+      ],
+    );
+    final button = OutlinedButton.icon(
+      icon: const Icon(
+        Icons.open_in_new,
+        size: 16,
+        color: AppTheme.primaryCyan,
+      ),
+      label: Text(
+        hasSolution ? 'Edit Solution' : 'Design Solution',
+        style: const TextStyle(color: AppTheme.primaryCyan),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: AppTheme.primaryCyan),
+      ),
+      onPressed: _openSolutionCanvas,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -496,61 +558,40 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: accent.withValues(alpha: 0.4)),
       ),
-      child: Row(
-        children: [
-          Icon(
-            hasSolution ? Icons.verified : Icons.architecture,
-            color: accent,
-            size: 28,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Below this width the icon + text + button no longer fit on one
+          // line without squeezing the text column to almost nothing —
+          // that's what was making every word wrap onto its own line.
+          // Stack instead: icon+text on top, full-width button below.
+          if (constraints.maxWidth < 420) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  hasSolution
-                      ? 'Solution designed — this is the answer key'
-                      : 'No solution designed yet',
-                  style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    icon,
+                    const SizedBox(width: 12),
+                    Expanded(child: text),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _isCheckingSolution
-                      ? 'Checking saved canvas…'
-                      : hasSolution
-                      ? '$_solutionDeviceCount device'
-                            '${_solutionDeviceCount == 1 ? '' : 's'}, '
-                            '$_solutionCableCount cable'
-                            '${_solutionCableCount == 1 ? '' : 's'}. '
-                            'Students must reproduce this to pass.'
-                      : 'Open the canvas, place the devices and connect them '
-                            'the correct way, then press Save Canvas.',
-                  style: const TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
+                const SizedBox(height: 14),
+                SizedBox(width: double.infinity, child: button),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton.icon(
-            icon: const Icon(
-              Icons.open_in_new,
-              size: 16,
-              color: AppTheme.primaryCyan,
-            ),
-            label: Text(
-              hasSolution ? 'Edit Solution' : 'Design Solution',
-              style: const TextStyle(color: AppTheme.primaryCyan),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppTheme.primaryCyan),
-            ),
-            onPressed: _openSolutionCanvas,
-          ),
-        ],
+            );
+          }
+
+          return Row(
+            children: [
+              icon,
+              const SizedBox(width: 16),
+              Expanded(child: text),
+              const SizedBox(width: 12),
+              button,
+            ],
+          );
+        },
       ),
     );
   }

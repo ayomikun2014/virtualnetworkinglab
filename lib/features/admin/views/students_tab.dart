@@ -169,6 +169,7 @@ class _StudentsTabState extends State<StudentsTab> {
               Expanded(
                 child: Text(
                   name,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTheme.textBright,
                     fontSize: 18,
