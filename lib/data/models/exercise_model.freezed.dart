@@ -39,6 +39,12 @@ mixin _$ExerciseModel {
   String get initialTopologyId => throw _privateConstructorUsedError;
   int get maxScore => throw _privateConstructorUsedError;
   bool get isPublished => throw _privateConstructorUsedError;
+
+  /// Closed to new submissions by the lecturer, independent of
+  /// [isPublished] — a locked assessment still shows in the lecturer's
+  /// Manage Exercises list and still shows students who already submitted
+  /// their result, it just refuses anyone who hasn't attempted it yet.
+  bool get isLocked => throw _privateConstructorUsedError;
   int? get practiceLevel => throw _privateConstructorUsedError;
 
   /// This exercise's position among every exercise published under the
@@ -91,6 +97,7 @@ abstract class $ExerciseModelCopyWith<$Res> {
     String initialTopologyId,
     int maxScore,
     bool isPublished,
+    bool isLocked,
     int? practiceLevel,
     int? assessmentNumber,
     int? timeLimitMinutes,
@@ -126,6 +133,7 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
     Object? initialTopologyId = null,
     Object? maxScore = null,
     Object? isPublished = null,
+    Object? isLocked = null,
     Object? practiceLevel = freezed,
     Object? assessmentNumber = freezed,
     Object? timeLimitMinutes = freezed,
@@ -179,6 +187,10 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
                 ? _value.isPublished
                 : isPublished // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isLocked: null == isLocked
+                ? _value.isLocked
+                : isLocked // ignore: cast_nullable_to_non_nullable
+                      as bool,
             practiceLevel: freezed == practiceLevel
                 ? _value.practiceLevel
                 : practiceLevel // ignore: cast_nullable_to_non_nullable
@@ -230,6 +242,7 @@ abstract class _$$ExerciseModelImplCopyWith<$Res>
     String initialTopologyId,
     int maxScore,
     bool isPublished,
+    bool isLocked,
     int? practiceLevel,
     int? assessmentNumber,
     int? timeLimitMinutes,
@@ -264,6 +277,7 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
     Object? initialTopologyId = null,
     Object? maxScore = null,
     Object? isPublished = null,
+    Object? isLocked = null,
     Object? practiceLevel = freezed,
     Object? assessmentNumber = freezed,
     Object? timeLimitMinutes = freezed,
@@ -317,6 +331,10 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
             ? _value.isPublished
             : isPublished // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isLocked: null == isLocked
+            ? _value.isLocked
+            : isLocked // ignore: cast_nullable_to_non_nullable
+                  as bool,
         practiceLevel: freezed == practiceLevel
             ? _value.practiceLevel
             : practiceLevel // ignore: cast_nullable_to_non_nullable
@@ -361,6 +379,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     required this.initialTopologyId,
     this.maxScore = 100,
     this.isPublished = true,
+    this.isLocked = false,
     this.practiceLevel,
     this.assessmentNumber,
     this.timeLimitMinutes,
@@ -404,6 +423,14 @@ class _$ExerciseModelImpl implements _ExerciseModel {
   @override
   @JsonKey()
   final bool isPublished;
+
+  /// Closed to new submissions by the lecturer, independent of
+  /// [isPublished] — a locked assessment still shows in the lecturer's
+  /// Manage Exercises list and still shows students who already submitted
+  /// their result, it just refuses anyone who hasn't attempted it yet.
+  @override
+  @JsonKey()
+  final bool isLocked;
   @override
   final int? practiceLevel;
 
@@ -442,7 +469,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
 
   @override
   String toString() {
-    return 'ExerciseModel(exerciseId: $exerciseId, title: $title, description: $description, categoryId: $categoryId, courseTitle: $courseTitle, exerciseType: $exerciseType, difficulty: $difficulty, authorUid: $authorUid, initialTopologyId: $initialTopologyId, maxScore: $maxScore, isPublished: $isPublished, practiceLevel: $practiceLevel, assessmentNumber: $assessmentNumber, timeLimitMinutes: $timeLimitMinutes, securityConfig: $securityConfig, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ExerciseModel(exerciseId: $exerciseId, title: $title, description: $description, categoryId: $categoryId, courseTitle: $courseTitle, exerciseType: $exerciseType, difficulty: $difficulty, authorUid: $authorUid, initialTopologyId: $initialTopologyId, maxScore: $maxScore, isPublished: $isPublished, isLocked: $isLocked, practiceLevel: $practiceLevel, assessmentNumber: $assessmentNumber, timeLimitMinutes: $timeLimitMinutes, securityConfig: $securityConfig, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -471,6 +498,8 @@ class _$ExerciseModelImpl implements _ExerciseModel {
                 other.maxScore == maxScore) &&
             (identical(other.isPublished, isPublished) ||
                 other.isPublished == isPublished) &&
+            (identical(other.isLocked, isLocked) ||
+                other.isLocked == isLocked) &&
             (identical(other.practiceLevel, practiceLevel) ||
                 other.practiceLevel == practiceLevel) &&
             (identical(other.assessmentNumber, assessmentNumber) ||
@@ -502,6 +531,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     initialTopologyId,
     maxScore,
     isPublished,
+    isLocked,
     practiceLevel,
     assessmentNumber,
     timeLimitMinutes,
@@ -538,6 +568,7 @@ abstract class _ExerciseModel implements ExerciseModel {
     required final String initialTopologyId,
     final int maxScore,
     final bool isPublished,
+    final bool isLocked,
     final int? practiceLevel,
     final int? assessmentNumber,
     final int? timeLimitMinutes,
@@ -578,6 +609,13 @@ abstract class _ExerciseModel implements ExerciseModel {
   int get maxScore;
   @override
   bool get isPublished;
+
+  /// Closed to new submissions by the lecturer, independent of
+  /// [isPublished] — a locked assessment still shows in the lecturer's
+  /// Manage Exercises list and still shows students who already submitted
+  /// their result, it just refuses anyone who hasn't attempted it yet.
+  @override
+  bool get isLocked;
   @override
   int? get practiceLevel;
 

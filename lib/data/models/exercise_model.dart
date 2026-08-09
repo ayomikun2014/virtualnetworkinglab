@@ -27,6 +27,12 @@ class ExerciseModel with _$ExerciseModel {
     required String initialTopologyId,
     @Default(100) int maxScore,
     @Default(true) bool isPublished,
+
+    /// Closed to new submissions by the lecturer, independent of
+    /// [isPublished] — a locked assessment still shows in the lecturer's
+    /// Manage Exercises list and still shows students who already submitted
+    /// their result, it just refuses anyone who hasn't attempted it yet.
+    @Default(false) bool isLocked,
     int? practiceLevel,
 
     /// This exercise's position among every exercise published under the

@@ -74,12 +74,21 @@ class GradingProvider extends ChangeNotifier {
     String? authorUid,
     String? studentName,
     String? studentEmail,
+    // Set from ExerciseModel.isLocked by the caller. Checked here, not just
+    // in the UI that disables the Open button, so a tab already open before
+    // the lecturer locked it can't still slip a submission through.
+    bool isLocked = false,
   }) async {
     _isChecking = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      if (isLocked) {
+        _errorMessage = 'This assessment has been locked by your lecturer.';
+        return null;
+      }
+
       // Course assessments (practiceLevel == null) get exactly one
       // attempt, pass or fail — unlike Free Practice, where re-attempting
       // is the whole point of the points economy. The assignment card

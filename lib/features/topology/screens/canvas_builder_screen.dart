@@ -906,6 +906,7 @@ class _CanvasBuilderScreenState extends State<CanvasBuilderScreen> {
       authorUid: _exercise?.authorUid,
       studentName: authProvider.currentUser?.displayName,
       studentEmail: authProvider.currentUser?.email,
+      isLocked: _exercise?.isLocked ?? false,
     );
 
     if (!mounted) return;

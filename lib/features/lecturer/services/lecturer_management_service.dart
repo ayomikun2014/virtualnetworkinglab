@@ -127,6 +127,92 @@ class LecturerManagementService {
     }
   }
 
+  /// Locks or unlocks [exerciseId] against new submissions.
+  ///
+  /// Deliberately a separate flag from [ExerciseModel.isPublished] rather
+  /// than reusing it: unpublishing removes the assessment from every
+  /// student's list outright (including anyone who already submitted),
+  /// while locking only closes it to students who have not attempted it
+  /// yet — the assessment and any existing results stay visible.
+  Future<bool> setExerciseLocked({
+    required String exerciseId,
+    required bool locked,
+  }) async {
+    try {
+      await _firestore.collection(_exercisesPath).doc(exerciseId).update({
+        'isLocked': locked,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+      await _logActivity(
+        action: locked ? 'LOCK_EXERCISE' : 'UNLOCK_EXERCISE',
+        description: '${locked ? 'Locked' : 'Unlocked'} exercise $exerciseId',
+        performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Updates the editable metadata of an already-published exercise.
+  ///
+  /// Course, exercise type, solution canvas and assessment number are not
+  /// editable here — changing course/type would break the drill-down a
+  /// student already relies on, and the assessment number marks publish
+  /// order rather than being a display label a lecturer can rename.
+  Future<bool> updateExercise({
+    required String exerciseId,
+    required String title,
+    required String instructions,
+    required String difficulty,
+    required double maxScore,
+    int? timeLimitMinutes,
+  }) async {
+    try {
+      await _firestore.collection(_exercisesPath).doc(exerciseId).update({
+        'title': title,
+        'description': instructions,
+        'difficulty': difficulty,
+        'maxScore': maxScore,
+        'timeLimitMinutes': timeLimitMinutes,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+      await _logActivity(
+        action: 'EDIT_EXERCISE',
+        description: 'Edited exercise: $title',
+        performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Deletes an exercise outright.
+  ///
+  /// Only the exercise document itself is removed — the private solution
+  /// key, the solution topology and any student `exercise_results`/progress
+  /// records referencing this [exerciseId] are left in place. They become
+  /// unreachable orphans (nothing queries an exercise by id once its own
+  /// document is gone), which is harmless and keeps this a single write
+  /// instead of a multi-collection fan-out delete.
+  Future<bool> deleteExercise({
+    required String exerciseId,
+    required String title,
+  }) async {
+    try {
+      await _firestore.collection(_exercisesPath).doc(exerciseId).delete();
+      await _logActivity(
+        action: 'DELETE_EXERCISE',
+        description: 'Deleted exercise: $title',
+        performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Log Internal Activity Event
   Future<void> _logActivity({
     required String action,

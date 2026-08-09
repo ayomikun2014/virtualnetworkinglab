@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VirtuaNetLab
 
 A web-based network topology lab. Students build networks on a drag-and-drop
@@ -359,3 +360,6 @@ TypeScript 7.)
 | Preview channel | `firebase hosting:channel:deploy preview` |
 | Function logs | `firebase functions:log` |
 | Roll back hosting | `firebase hosting:rollback` |
+=======
+# virtualnetworkinglab
+>>>>>>> 9cb052fd51a09395c12472e5dbfba610cbcaa36c
