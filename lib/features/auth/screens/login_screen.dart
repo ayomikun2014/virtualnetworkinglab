@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/widgets/app_notification.dart';
 import '../../../core/widgets/app_logo_widget.dart';
 import '../../../core/widgets/project_credits_widget.dart';
 import '../providers/auth_provider.dart';
@@ -32,20 +33,66 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    // Clear previous errors before attempting login
+    authProvider.clearError();
+
     final success = await authProvider.loginWithIdentifierAndPassword(
       identifier: _identifierController.text.trim(),
       password: _passwordController.text,
     );
 
     if (!success && mounted && authProvider.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
-          backgroundColor: AppTheme.accentCrimson,
-        ),
-      );
+      AppNotifier.error(context, authProvider.errorMessage!);
     }
   }
+
+  /// Builds a prominent inline error banner widget
+  Widget _buildErrorBanner(String message, AuthProvider authProvider) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.accentCrimson.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppTheme.accentCrimson.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppTheme.accentCrimson,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.accentCrimson,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => authProvider.clearError(),
+            child: Icon(
+              Icons.close_rounded,
+              color: AppTheme.accentCrimson.withValues(alpha: 0.7),
+              size: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +163,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 32),
 
+                      // Inline Error Banner — visible when login fails
+                      if (authProvider.errorMessage != null)
+                        _buildErrorBanner(
+                          authProvider.errorMessage!,
+                          authProvider,
+                        ),
+
                       // Dual Identifier Field (Email OR Matriculation Number)
                       TextFormField(
                         controller: _identifierController,
@@ -123,7 +177,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Email or Matriculation Number',
                           hintText: 'alex@univ.edu OR NT20010100001',
-                          prefixIcon: Icon(Icons.person_outline, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -141,13 +198,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: AppTheme.textBright),
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryCyan),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: AppTheme.primaryCyan,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                               color: AppTheme.textMuted,
                             ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
                         ),
                         validator: (val) {
@@ -163,7 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: authProvider.isLoading ? null : _handleLogin,
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _handleLogin,
                           child: authProvider.isLoading
                               ? const SizedBox(
                                   height: 20,

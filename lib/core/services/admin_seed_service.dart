@@ -11,7 +11,7 @@ class AdminSeedService {
   final FirebaseFirestore _firestore;
 
   AdminSeedService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Seeding routine executed on app launch. Creates default Root Administrator if none exists.
   Future<void> bootstrapRootAdmin() async {
@@ -32,7 +32,7 @@ class AdminSeedService {
 
       final rootAdmin = UserModel(
         uid: adminUid,
-        email: 'admin@virtuanetlab.univ.edu',
+        email: 'adminlab@gmail.com',
         displayName: 'Root Administrator',
         role: UserRole.admin,
         departmentId: 'dept_admin',
@@ -40,10 +40,7 @@ class AdminSeedService {
         lastLoginAt: now,
         createdAt: now,
         updatedAt: now,
-        stats: {
-          'completedExercises': 0,
-          'totalScore': 0,
-        },
+        stats: {'completedExercises': 0, 'totalScore': 0},
       );
 
       // Write default root admin profile to Firestore

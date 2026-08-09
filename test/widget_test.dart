@@ -7,7 +7,10 @@ void main() {
     test('AppConstants returns correct collection namespace paths', () {
       expect(AppConstants.rootPath, equals('virtuanetlab/app'));
       expect(AppConstants.usersCollection, equals('virtuanetlab/app/users'));
-      expect(AppConstants.topologiesCollection, equals('virtuanetlab/app/topologies'));
+      expect(
+        AppConstants.topologiesCollection,
+        equals('virtuanetlab/app/topologies'),
+      );
     });
 
     test('TimestampConverter parses ISO string and milliseconds correctly', () {
@@ -18,7 +21,10 @@ void main() {
       expect(fromIso.year, equals(now.year));
 
       final fromMillis = converter.fromJson(now.millisecondsSinceEpoch);
-      expect(fromMillis.millisecondsSinceEpoch, equals(now.millisecondsSinceEpoch));
+      expect(
+        fromMillis.millisecondsSinceEpoch,
+        equals(now.millisecondsSinceEpoch),
+      );
     });
   });
 }

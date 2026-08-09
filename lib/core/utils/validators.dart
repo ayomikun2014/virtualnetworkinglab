@@ -8,7 +8,10 @@ class Validators {
   /// RegEx pattern for institutional Matriculation Numbers
   /// Format: NT + 4-digit admission year + 5-digit sequence (e.g., NT202401115)
   /// Updated pattern: ^NT\d{4}\d{5,7}$ (supports 5 to 7 digit student sequences like NT20240111512)
-  static final RegExp _matricRegExp = RegExp(r'^NT\d{4}\d{5,7}$', caseSensitive: false);
+  static final RegExp _matricRegExp = RegExp(
+    r'^NT\d{4}\d{5,7}$',
+    caseSensitive: false,
+  );
 
   /// Standard Email RegEx pattern
   static final RegExp _emailRegExp = RegExp(

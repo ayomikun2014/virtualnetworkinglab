@@ -15,8 +15,26 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = true;
   String? _errorMessage;
 
+  /// True while an explicit login/register call is in flight.
+  ///
+  /// `login()` and `registerStudent()` on the repository each fetch (or, for
+  /// registration, first write) the Firestore profile themselves and return
+  /// it. But `createUserWithEmailAndPassword`/`signInWithEmailAndPassword`
+  /// also fire `authStateChanges` as soon as Firebase's local auth state
+  /// updates — typically before that explicit fetch/write finishes. Without
+  /// this guard, the reactive listener below ran a SECOND, independent
+  /// profile fetch concurrently with the explicit one. For registration in
+  /// particular, that second fetch could land in the gap after the auth
+  /// account was created but before the real profile document was written,
+  /// find nothing, and set `_currentUser` back to null — sometimes moments
+  /// after the explicit flow had already navigated the user to their
+  /// dashboard, which bounced them straight back to /login mid-registration.
+  /// Gating the reactive listener while an explicit call owns the transition
+  /// makes exactly one code path respond to any given sign-in.
+  bool _isAuthenticating = false;
+
   AuthProvider({IAuthRepository? authRepository})
-      : _authRepository = authRepository ?? FirebaseAuthRepository() {
+    : _authRepository = authRepository ?? FirebaseAuthRepository() {
     _initAuthListener();
   }
 
@@ -34,6 +52,8 @@ class AuthProvider extends ChangeNotifier {
   void _initAuthListener() {
     _authStateSubscription = _authRepository.authStateChanges.listen(
       (user) async {
+        if (_isAuthenticating) return;
+
         if (user == null) {
           _currentUser = null;
           _isLoading = false;
@@ -79,28 +99,31 @@ class AuthProvider extends ChangeNotifier {
     required String identifier,
     required String password,
   }) async {
+    _isAuthenticating = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _currentUser = await _authRepository.login(
+      final user = await _authRepository.login(
         identifier: identifier,
         password: password,
       );
-      _isLoading = false;
-      notifyListeners();
+      // Force-refresh the ID token so role/department custom claims are
+      // current before any role-gated route redirect evaluates them.
+      await _authRepository.currentUser?.getIdTokenResult(true);
+      _currentUser = user;
       return true;
     } on Failure catch (f) {
       _errorMessage = f.message;
-      _isLoading = false;
-      notifyListeners();
       return false;
     } catch (e) {
       _errorMessage = 'Unexpected login failure: $e';
-      _isLoading = false;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      _isAuthenticating = false;
+      notifyListeners();
     }
   }
 
@@ -113,12 +136,13 @@ class AuthProvider extends ChangeNotifier {
     required String departmentId,
     List<String> enrolledCourseIds = const [],
   }) async {
+    _isAuthenticating = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _currentUser = await _authRepository.registerStudent(
+      final user = await _authRepository.registerStudent(
         email: email,
         password: password,
         displayName: displayName,
@@ -126,19 +150,57 @@ class AuthProvider extends ChangeNotifier {
         departmentId: departmentId,
         enrolledCourseIds: enrolledCourseIds,
       );
-      _isLoading = false;
-      notifyListeners();
+      await _authRepository.currentUser?.getIdTokenResult(true);
+      _currentUser = user;
       return true;
     } on Failure catch (f) {
       _errorMessage = f.message;
-      _isLoading = false;
-      notifyListeners();
       return false;
     } catch (e) {
       _errorMessage = 'Registration failed: $e';
-      _isLoading = false;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      _isAuthenticating = false;
+      notifyListeners();
+    }
+  }
+
+  /// Registers a new Lecturer account. Goes in immediately — it's a real,
+  /// login-able account — but lands `approvalStatus: 'pending'`, which the
+  /// router reads to keep them off the real lecturer dashboard until an
+  /// admin approves them.
+  Future<bool> registerLecturer({
+    required String email,
+    required String password,
+    required String displayName,
+    required String departmentId,
+  }) async {
+    _isAuthenticating = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = await _authRepository.registerLecturer(
+        email: email,
+        password: password,
+        displayName: displayName,
+        departmentId: departmentId,
+      );
+      await _authRepository.currentUser?.getIdTokenResult(true);
+      _currentUser = user;
+      return true;
+    } on Failure catch (f) {
+      _errorMessage = f.message;
+      return false;
+    } catch (e) {
+      _errorMessage = 'Registration failed: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      _isAuthenticating = false;
+      notifyListeners();
     }
   }
 

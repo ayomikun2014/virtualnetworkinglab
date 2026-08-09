@@ -56,6 +56,17 @@ class TopologyProvider extends ChangeNotifier {
 
   /// Subscribes to real-time Cloud Firestore topology updates
   void watchTopology(String topologyId) {
+    // Flush any edit still waiting out its debounce before switching away.
+    // Left alone, that timer fires later against whatever topology is
+    // active by then — losing the edit, or worse, writing it into the
+    // next topology's document once the switch below reassigns
+    // _activeTopology.
+    if (_saveDebounce != null) {
+      _saveDebounce!.cancel();
+      _saveDebounce = null;
+      saveCurrentCanvas();
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -89,6 +100,7 @@ class TopologyProvider extends ChangeNotifier {
           },
           onError: (error) {
             _errorMessage = 'Topology stream error: $error';
+            debugPrint('watchTopology failed: $error');
             _isLoading = false;
             notifyListeners();
           },
@@ -251,9 +263,11 @@ class TopologyProvider extends ChangeNotifier {
       await _repository.saveTopology(_activeTopology!);
     } on Failure catch (f) {
       _errorMessage = f.message;
+      debugPrint('saveCurrentCanvas failed: ${f.message}');
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to save topology: $e';
+      debugPrint('saveCurrentCanvas failed: $e');
       notifyListeners();
     }
   }

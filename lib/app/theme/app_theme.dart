@@ -45,7 +45,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceGlass,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: borderSubtle),
@@ -98,10 +101,26 @@ class AppTheme {
 
       // Typography
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(color: textBright, fontSize: 32, fontWeight: FontWeight.bold),
-        headlineMedium: TextStyle(color: textBright, fontSize: 24, fontWeight: FontWeight.bold),
-        titleLarge: TextStyle(color: textBright, fontSize: 20, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textBright, fontSize: 16, fontWeight: FontWeight.w600),
+        headlineLarge: TextStyle(
+          color: textBright,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+        ),
+        headlineMedium: TextStyle(
+          color: textBright,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+        titleLarge: TextStyle(
+          color: textBright,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: TextStyle(
+          color: textBright,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
         bodyLarge: TextStyle(color: textBright, fontSize: 16),
         bodyMedium: TextStyle(color: textMuted, fontSize: 14),
       ),

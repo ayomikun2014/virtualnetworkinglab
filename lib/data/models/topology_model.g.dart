@@ -58,7 +58,7 @@ Map<String, dynamic> _$$InterfaceConfigImplToJson(
   'gateway': instance.gateway,
   'status': instance.status,
   'vlan': instance.vlan,
-  'acls': instance.acls,
+  'acls': instance.acls.map((e) => e.toJson()).toList(),
 };
 
 _$DeviceNodeImpl _$$DeviceNodeImplFromJson(Map<String, dynamic> json) =>
@@ -86,8 +86,8 @@ Map<String, dynamic> _$$DeviceNodeImplToJson(_$DeviceNodeImpl instance) =>
       'label': instance.label,
       'type': _$DeviceTypeEnumMap[instance.type]!,
       'model': instance.model,
-      'position': instance.position,
-      'interfaces': instance.interfaces,
+      'position': instance.position.toJson(),
+      'interfaces': instance.interfaces.map((e) => e.toJson()).toList(),
       'ospfEnabled': instance.ospfEnabled,
     };
 
@@ -148,8 +148,8 @@ Map<String, dynamic> _$$TopologyModelImplToJson(_$TopologyModelImpl instance) =>
       'ownerUid': instance.ownerUid,
       'name': instance.name,
       'isTemplate': instance.isTemplate,
-      'nodes': instance.nodes,
-      'edges': instance.edges,
+      'nodes': instance.nodes.map((e) => e.toJson()).toList(),
+      'edges': instance.edges.map((e) => e.toJson()).toList(),
       'version': instance.version,
       'createdAt': const TimestampConverter().toJson(instance.createdAt),
       'updatedAt': const TimestampConverter().toJson(instance.updatedAt),

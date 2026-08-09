@@ -6,11 +6,7 @@ class AppLogoWidget extends StatelessWidget {
   final double size;
   final bool showGlow;
 
-  const AppLogoWidget({
-    super.key,
-    this.size = 36,
-    this.showGlow = true,
-  });
+  const AppLogoWidget({super.key, this.size = 36, this.showGlow = true});
 
   @override
   Widget build(BuildContext context) {

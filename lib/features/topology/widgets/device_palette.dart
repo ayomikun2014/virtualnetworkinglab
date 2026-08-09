@@ -32,12 +32,15 @@ class DevicePalette extends StatelessWidget {
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'Hardware Library',
-                  style: TextStyle(
-                    color: AppTheme.textBright,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                const Expanded(
+                  child: Text(
+                    'Hardware Library',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppTheme.textBright,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],

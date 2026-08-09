@@ -18,6 +18,14 @@ class AppConstants {
   static String get exercisesCollection => '$rootPath/exercises';
   static String get exerciseAttemptsCollection => '$rootPath/exercise_attempts';
   static String get submissionsCollection => '$rootPath/submissions';
+
+  /// Denormalised, per-student course assessment results — what a
+  /// lecturer's Grading Center reads directly with
+  /// `where('authorUid', isEqualTo: ...)`. Written alongside the student's
+  /// own progress record by `FirebaseGradingRepository.recordAttempt`; see
+  /// its field doc for why this exists instead of a Firestore
+  /// collection-group query.
+  static String get exerciseResultsCollection => '$rootPath/exercise_results';
   static String get topologiesCollection => '$rootPath/topologies';
   static String get studentProgressCollection => '$rootPath/student_progress';
 
@@ -51,6 +59,24 @@ class AppConstants {
       '$rootPath/activity_logs_$yyyyMm';
   static String performanceMetricsCollection(String yyyyMmDd) =>
       '$rootPath/performance_metrics_$yyyyMmDd';
+
+  /// This month's activity log collection.
+  ///
+  /// Every call site that logs an activity event needs exactly this, and
+  /// `activityLogsCollection` takes a required `yyyyMm` argument — every
+  /// former call site referenced the method itself (no `()`, no argument)
+  /// inside a string interpolation. That's a tear-off, not a call: it
+  /// compiles because `Object.toString()` exists on Function too, but it
+  /// interpolates something like `Closure: (String) => String from Function
+  /// 'activityLogsCollection': static.` into the path instead of a real
+  /// collection name — which Firestore then rejects. Centralising the
+  /// "current month" computation here means every writer and reader derives
+  /// the same path the same way.
+  static String get currentActivityLogsCollection {
+    final now = DateTime.now();
+    final yyyyMm = '${now.year}${now.month.toString().padLeft(2, '0')}';
+    return activityLogsCollection(yyyyMm);
+  }
 
   /// User notifications subcollection path generator
   static String userNotificationsCollection(String uid) =>

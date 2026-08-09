@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../views/class_management_tab.dart';
 import '../views/exercise_authoring_tab.dart';
 import '../views/grading_center_tab.dart';
 import '../views/lecturer_overview_tab.dart';
@@ -21,7 +20,6 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
 
   final List<String> _tabTitles = [
     'Faculty Class Analytics Hub',
-    'Class Cohorts & Student Rosters',
     'Lab Exercise Authoring Wizard',
     'Submissions & Grading Center',
   ];
@@ -71,7 +69,9 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: const BoxDecoration(
                       color: AppTheme.surfaceGlass,
-                      border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.borderSubtle),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -85,11 +85,18 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.primaryBlue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppTheme.primaryBlue.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -133,10 +140,8 @@ class _LecturerDashboardState extends State<LecturerDashboard> {
       case 0:
         return LecturerOverviewTab(onNavigateTab: _onTabSelected);
       case 1:
-        return const ClassManagementTab();
-      case 2:
         return const ExerciseAuthoringTab();
-      case 3:
+      case 2:
         return const GradingCenterTab();
       default:
         return LecturerOverviewTab(onNavigateTab: _onTabSelected);

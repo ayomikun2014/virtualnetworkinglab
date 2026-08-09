@@ -4,25 +4,55 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/utils/dialog_utils.dart';
 import '../../../core/widgets/app_logo_widget.dart';
-import '../../../core/widgets/project_credits_widget.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../exercises/screens/practice_levels_screen.dart';
 import '../screens/student_dashboard.dart';
 
 /// Responsive Student Dashboard Layout Shell with Sidebar (Desktop) and Navigation Drawer (Mobile)
 class DashboardLayout extends StatefulWidget {
-  const DashboardLayout({super.key});
+  // Named rather than left as bare ints at each `initialTabIndex:` /
+  // `?tab=` call site — those are scattered across app_routes.dart,
+  // student_dashboard.dart and canvas_builder_screen.dart, and a bare `1`
+  // or `3` at each site gives no indication it has to stay in sync with
+  // _buildSelectedTabBody's switch below.
+  static const int dashboardHomeTabIndex = 0;
+  static const int coursesLabTabIndex = 1;
+  static const int saveHistoryTabIndex = 2;
+  static const int freePracticeTabIndex = 3;
+
+  final int initialTabIndex;
+
+  const DashboardLayout({
+    super.key,
+    this.initialTabIndex = dashboardHomeTabIndex,
+  });
 
   @override
   State<DashboardLayout> createState() => _DashboardLayoutState();
 }
 
 class _DashboardLayoutState extends State<DashboardLayout> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = widget.initialTabIndex;
+
+  // Navigating to '/student-dashboard?tab=N' while already on the dashboard
+  // reuses this State: go_router keys its pages on the route's path *pattern*
+  // ('/student-dashboard'), which doesn't change when only the query string
+  // does, so no new State is created and the initialiser above never re-runs.
+  // Without this, "Start Practice" on the hub appeared to do nothing — the
+  // URL changed but the body stayed on whatever tab was already showing.
+  @override
+  void didUpdateWidget(DashboardLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTabIndex != oldWidget.initialTabIndex) {
+      setState(() => _selectedIndex = widget.initialTabIndex);
+    }
+  }
 
   final List<String> _tabTitles = [
     'Dashboard Hub',
-    'Lecturer Course Assessments',
-    'Submission History',
+    'Courses Lab',
+    'Save History',
+    'Free Practice Mode',
   ];
 
   @override
@@ -95,14 +125,20 @@ class _DashboardLayoutState extends State<DashboardLayout> {
             decoration: BoxDecoration(
               color: AppTheme.primaryCyan.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.primaryCyan.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppTheme.primaryCyan.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
                 const CircleAvatar(
                   radius: 12,
                   backgroundColor: AppTheme.primaryCyan,
-                  child: Icon(Icons.person, size: 14, color: AppTheme.backgroundMidnight),
+                  child: Icon(
+                    Icons.person,
+                    size: 14,
+                    color: AppTheme.backgroundMidnight,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -130,103 +166,146 @@ class _DashboardLayoutState extends State<DashboardLayout> {
         decoration: const BoxDecoration(
           border: Border(right: BorderSide(color: AppTheme.borderSubtle)),
         ),
-      child: Column(
-        children: [
-          // Branding Header
-          Container(
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            alignment: Alignment.centerLeft,
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
-            ),
-            child: Row(
-              children: const [
-                AppLogoWidget(size: 38),
-                SizedBox(width: 12),
-                Text(
-                  'VirtuaNetLab',
-                  style: TextStyle(
-                    color: AppTheme.textBright,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
+        child: Column(
+          children: [
+            // Branding Header
+            Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              alignment: Alignment.centerLeft,
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppTheme.borderSubtle),
                 ),
-              ],
-            ),
-          ),
-
-          // Navigation Links
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              children: [
-                _buildSidebarNavItem(0, Icons.dashboard, 'Dashboard Hub'),
-                _buildSidebarNavItem(1, Icons.assignment, 'Lecturer Labs'),
-                _buildSidebarNavItem(2, Icons.history_edu, 'Submissions'),
-                const Divider(color: AppTheme.borderSubtle, height: 32),
-                ListTile(
-                  leading: const Icon(Icons.architecture, color: AppTheme.primaryCyan),
-                  title: const Text('Sandbox Canvas', style: TextStyle(color: AppTheme.textBright, fontSize: 14)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {
-                    final uid = authProvider.currentUser?.uid ?? 'demo';
-                    context.go('/canvas-builder/sandbox_$uid');
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Sidebar Footer Status & Sign Out Button
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.accentEmerald,
-                        shape: BoxShape.circle,
+              ),
+              child: Row(
+                children: const [
+                  AppLogoWidget(size: 38),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'VirtuaNetLab',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppTheme.textBright,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Laboratory Engine Connected',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.logout, size: 16, color: AppTheme.accentCrimson),
-                    label: const Text('Sign Out', style: TextStyle(color: AppTheme.accentCrimson, fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.accentCrimson),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    onPressed: () => DialogUtils.showLogoutConfirmationDialog(context, authProvider),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const ProjectCreditsWidget(compact: true),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Navigation Links
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 12,
+                ),
+                children: [
+                  _buildSidebarNavItem(
+                    DashboardLayout.dashboardHomeTabIndex,
+                    Icons.dashboard,
+                    'Dashboard Hub',
+                  ),
+                  _buildSidebarNavItem(
+                    DashboardLayout.coursesLabTabIndex,
+                    Icons.assignment,
+                    'Courses Lab',
+                  ),
+                  _buildSidebarNavItem(
+                    DashboardLayout.saveHistoryTabIndex,
+                    Icons.history_edu,
+                    'Save History',
+                  ),
+                  _buildSidebarNavItem(
+                    DashboardLayout.freePracticeTabIndex,
+                    Icons.school,
+                    'Free Practice',
+                  ),
+                  const Divider(color: AppTheme.borderSubtle, height: 32),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.architecture,
+                      color: AppTheme.primaryCyan,
+                    ),
+                    title: const Text(
+                      'Sandbox Canvas',
+                      style: TextStyle(
+                        color: AppTheme.textBright,
+                        fontSize: 14,
+                      ),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    onTap: () {
+                      final uid = authProvider.currentUser?.uid ?? 'demo';
+                      context.go('/canvas-builder/sandbox_$uid');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.logout,
+                      color: AppTheme.accentCrimson,
+                    ),
+                    title: const Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: AppTheme.accentCrimson,
+                        fontSize: 14,
+                      ),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    onTap: () => DialogUtils.showLogoutConfirmationDialog(
+                      context,
+                      authProvider,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Sidebar Footer Status
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppTheme.borderSubtle)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.accentEmerald,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Network Engine Connected',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   /// Sidebar Item Builder
   Widget _buildSidebarNavItem(int index, IconData icon, String label) {
@@ -239,7 +318,9 @@ class _DashboardLayoutState extends State<DashboardLayout> {
         selectedTileColor: AppTheme.primaryCyan.withValues(alpha: 0.15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: isSelected ? const BorderSide(color: AppTheme.primaryCyan, width: 1) : BorderSide.none,
+          side: isSelected
+              ? const BorderSide(color: AppTheme.primaryCyan, width: 1)
+              : BorderSide.none,
         ),
         leading: Icon(
           icon,
@@ -282,7 +363,11 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                         color: AppTheme.primaryCyan.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.hub, color: AppTheme.primaryCyan, size: 28),
+                      child: const Icon(
+                        Icons.hub,
+                        color: AppTheme.primaryCyan,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Text(
@@ -298,18 +383,43 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                 const SizedBox(height: 12),
                 Text(
                   authProvider.currentUser?.email ?? 'student@univ.edu',
-                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
           ),
-          _buildDrawerNavItem(0, Icons.dashboard, 'Dashboard Hub'),
-          _buildDrawerNavItem(1, Icons.assignment, 'Lecturer Labs'),
-          _buildDrawerNavItem(2, Icons.history_edu, 'Submissions'),
+          _buildDrawerNavItem(
+            DashboardLayout.dashboardHomeTabIndex,
+            Icons.dashboard,
+            'Dashboard Hub',
+          ),
+          _buildDrawerNavItem(
+            DashboardLayout.coursesLabTabIndex,
+            Icons.assignment,
+            // Kept identical to the desktop sidebar's labels above — the two
+            // navigations list the same four tabs, and having them named
+            // differently on phone and desktop reads as different features.
+            'Courses Lab',
+          ),
+          _buildDrawerNavItem(
+            DashboardLayout.saveHistoryTabIndex,
+            Icons.history_edu,
+            'Save History',
+          ),
+          _buildDrawerNavItem(DashboardLayout.freePracticeTabIndex, Icons.school, 'Free Practice'),
           const Divider(color: AppTheme.borderSubtle),
           ListTile(
-            leading: const Icon(Icons.architecture, color: AppTheme.primaryCyan),
-            title: const Text('Sandbox Canvas', style: TextStyle(color: AppTheme.textBright)),
+            leading: const Icon(
+              Icons.architecture,
+              color: AppTheme.primaryCyan,
+            ),
+            title: const Text(
+              'Sandbox Canvas',
+              style: TextStyle(color: AppTheme.textBright),
+            ),
             onTap: () {
               Navigator.pop(context);
               final uid = authProvider.currentUser?.uid ?? 'demo';
@@ -318,15 +428,14 @@ class _DashboardLayoutState extends State<DashboardLayout> {
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.accentCrimson),
-            title: const Text('Sign Out', style: TextStyle(color: AppTheme.accentCrimson)),
+            title: const Text(
+              'Sign Out',
+              style: TextStyle(color: AppTheme.accentCrimson),
+            ),
             onTap: () {
               Navigator.pop(context);
               DialogUtils.showLogoutConfirmationDialog(context, authProvider);
             },
-          ),
-          const Padding(
-            padding: EdgeInsets.all(12.0),
-            child: ProjectCreditsWidget(compact: true),
           ),
         ],
       ),
@@ -338,8 +447,16 @@ class _DashboardLayoutState extends State<DashboardLayout> {
 
     return ListTile(
       selected: isSelected,
-      leading: Icon(icon, color: isSelected ? AppTheme.primaryCyan : AppTheme.textMuted),
-      title: Text(label, style: TextStyle(color: isSelected ? AppTheme.primaryCyan : AppTheme.textBright)),
+      leading: Icon(
+        icon,
+        color: isSelected ? AppTheme.primaryCyan : AppTheme.textMuted,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? AppTheme.primaryCyan : AppTheme.textBright,
+        ),
+      ),
       onTap: () {
         setState(() => _selectedIndex = index);
         Navigator.pop(context);
@@ -350,12 +467,14 @@ class _DashboardLayoutState extends State<DashboardLayout> {
   /// Selected Body View Router
   Widget _buildSelectedTabBody(BuildContext context, user) {
     switch (_selectedIndex) {
-      case 0:
+      case DashboardLayout.dashboardHomeTabIndex:
         return DashboardHomeView(user: user);
-      case 1:
-        return const LecturerAssignmentsView();
-      case 2:
-        return const SubmissionsHistoryView();
+      case DashboardLayout.coursesLabTabIndex:
+        return const CoursesLabView();
+      case DashboardLayout.saveHistoryTabIndex:
+        return const SaveHistoryView();
+      case DashboardLayout.freePracticeTabIndex:
+        return const PracticeLevelsScreen();
       default:
         return DashboardHomeView(user: user);
     }

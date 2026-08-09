@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../views/audit_logs_tab.dart';
-import '../views/courses_tab.dart';
 import '../views/lecturers_tab.dart';
 import '../views/overview_tab.dart';
 import '../views/students_tab.dart';
@@ -23,7 +22,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<String> _tabTitles = [
     'System Overview Hub',
     'Lecturer Faculty Roster',
-    'Academic Courses & Curriculum',
     'Student Directory & Matric Registry',
     'Security Audit & Activity Logs',
   ];
@@ -79,7 +77,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: const BoxDecoration(
                       color: AppTheme.surfaceGlass,
-                      border: Border(bottom: BorderSide(color: AppTheme.borderSubtle)),
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.borderSubtle),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -93,11 +93,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppTheme.accentEmerald.withValues(alpha: 0.12),
+                            color: AppTheme.accentEmerald.withValues(
+                              alpha: 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppTheme.accentEmerald.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppTheme.accentEmerald.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                           child: Row(
                             children: const [
@@ -143,10 +152,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 1:
         return const LecturersTab();
       case 2:
-        return const CoursesTab();
-      case 3:
         return const StudentsTab();
-      case 4:
+      case 3:
         return const AuditLogsTab();
       default:
         return OverviewTab(onNavigateTab: _onTabSelected);

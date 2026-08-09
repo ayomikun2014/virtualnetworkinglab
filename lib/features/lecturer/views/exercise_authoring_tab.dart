@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/widgets/app_notification.dart';
+import '../../../data/repositories/topology_repository.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../services/lecturer_management_service.dart';
 
 /// Lecturer Tab 2: Exercise Authoring Wizard & Solution Key Builder
@@ -16,37 +20,139 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
   final _titleController = TextEditingController();
   final _instructionsController = TextEditingController();
   final _maxScoreController = TextEditingController(text: '100');
+  final _timeLimitController = TextEditingController();
+
+  /// Index into the signed-in lecturer's own `assignedCourses` — set by an
+  /// admin at approval time, not a fixed list every lecturer shares. A
+  /// lecturer can only publish under a course they were actually assigned,
+  /// which is what keeps `categoryId` guaranteed to match something a real
+  /// student can be enrolled in via `InviteCodeService`.
+  int _selectedCourseIndex = 0;
 
   String _type = 'routing';
   String _difficulty = 'intermediate';
-  final String _starterCanvasId = 'starter_canvas_01';
   bool _isPublishing = false;
 
   final _service = LecturerManagementService();
+  final _topologyRepository = FirebaseTopologyRepository();
+
+  /// Reserved up front so the solution canvas the lecturer designs can be
+  /// saved under an id the published exercise will actually point at.
+  late String _draftExerciseId;
+
+  /// What the lecturer has actually built on the solution canvas so far.
+  /// Publishing is blocked until there is something to grade against —
+  /// otherwise every student would "pass" instantly against an empty answer.
+  int _solutionDeviceCount = 0;
+  int _solutionCableCount = 0;
+  bool _isCheckingSolution = false;
+
+  String get _solutionTopologyId =>
+      LecturerManagementService.solutionTopologyIdFor(_draftExerciseId);
+
+  @override
+  void initState() {
+    super.initState();
+    _draftExerciseId = _service.reserveExerciseId();
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _instructionsController.dispose();
     _maxScoreController.dispose();
+    _timeLimitController.dispose();
     super.dispose();
+  }
+
+  /// Opens the canvas so the lecturer can build the correct network, then
+  /// re-reads what they saved when they come back.
+  ///
+  /// Uses `push`, not `go`: `go` replaces this route, which would tear down
+  /// the form and lose everything typed so far.
+  Future<void> _openSolutionCanvas() async {
+    await context.push('/canvas-builder/$_solutionTopologyId');
+    if (!mounted) return;
+    await _refreshSolutionSummary();
+  }
+
+  Future<void> _refreshSolutionSummary() async {
+    setState(() => _isCheckingSolution = true);
+    try {
+      final topology = await _topologyRepository.getTopology(
+        _solutionTopologyId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _solutionDeviceCount = topology.nodes.length;
+        _solutionCableCount = topology.edges.length;
+      });
+    } catch (_) {
+      // Nothing saved at that id yet — the lecturer hasn't designed it.
+      if (!mounted) return;
+      setState(() {
+        _solutionDeviceCount = 0;
+        _solutionCableCount = 0;
+      });
+    } finally {
+      if (mounted) setState(() => _isCheckingSolution = false);
+    }
   }
 
   Future<void> _handlePublishExercise() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final assignedCourses =
+        Provider.of<AuthProvider>(
+          context,
+          listen: false,
+        ).currentUser?.assignedCourses ??
+        const [];
+    if (assignedCourses.isEmpty) {
+      AppNotifier.error(
+        context,
+        'You have no assigned courses yet — an admin needs to assign at '
+        'least one before you can publish an exercise.',
+      );
+      return;
+    }
+    final course = assignedCourses[_selectedCourseIndex];
+
+    // Re-read rather than trusting cached counts: the lecturer may have
+    // designed the canvas in another tab since this form was opened.
+    await _refreshSolutionSummary();
+    if (!mounted) return;
+
+    if (_solutionDeviceCount == 0) {
+      AppNotifier.error(
+        context,
+        'Design the solution canvas first — an exercise with no devices '
+        'would mark every submission correct.',
+      );
+      return;
+    }
+
     setState(() => _isPublishing = true);
 
     final maxScore = double.tryParse(_maxScoreController.text) ?? 100.0;
+    final timeLimitMinutes = int.tryParse(_timeLimitController.text.trim());
 
     final success = await _service.createExercise(
+      exerciseId: _draftExerciseId,
       title: _titleController.text.trim(),
       instructions: _instructionsController.text.trim(),
       exerciseType: _type,
+      categoryId: course['code'] ?? '',
+      courseTitle: course['title'] ?? '',
       difficulty: _difficulty,
       maxScore: maxScore,
-      initialTopologyId: _starterCanvasId,
-      solutionTopologyId: '${_starterCanvasId}_solution',
+      // Students start from a blank canvas and build it themselves; the
+      // lecturer's design is the answer key, not the starting point.
+      initialTopologyId: '',
+      solutionTopologyId: _solutionTopologyId,
+      timeLimitMinutes: (timeLimitMinutes != null && timeLimitMinutes > 0)
+          ? timeLimitMinutes
+          : null,
       targetCriteria: {
         'icmpPingSuccess': true,
         'ospfAdjacencyVerified': _type == 'routing',
@@ -54,25 +160,29 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
       },
     );
 
-    if (mounted) {
-      setState(() => _isPublishing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Lab exercise published successfully!'
-                : 'Failed to publish exercise.',
-          ),
-          backgroundColor: success
-              ? AppTheme.accentEmerald
-              : AppTheme.accentCrimson,
-        ),
-      );
+    if (!mounted) return;
+    setState(() => _isPublishing = false);
+    AppNotifier.show(
+      context,
+      success
+          ? 'Exercise published successfully!'
+          : 'Failed to publish exercise.',
+      type: success
+          ? AppNotificationType.success
+          : AppNotificationType.error,
+    );
 
-      if (success) {
-        _titleController.clear();
-        _instructionsController.clear();
-      }
+    if (success) {
+      _titleController.clear();
+      _instructionsController.clear();
+      _timeLimitController.clear();
+      setState(() {
+        // Start a fresh draft so the next exercise gets its own id and its
+        // own solution canvas rather than overwriting the one just published.
+        _draftExerciseId = _service.reserveExerciseId();
+        _solutionDeviceCount = 0;
+        _solutionCableCount = 0;
+      });
     }
   }
 
@@ -93,7 +203,9 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Configure exercise metadata, link a starter topology canvas, and define automated grading test criteria.',
+            'Build the correct network on the solution canvas, write the '
+            'instructions students will follow, and publish. Submissions are '
+            'graded against the topology you design here.',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 24),
@@ -146,6 +258,83 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? 'Enter instructions'
                         : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Course linkage — students only see an assessment when
+                  // its course code is in their enrolledCourseIds (which
+                  // they get by entering the course code with
+                  // InviteCodeService). A dropdown over the courses THIS
+                  // lecturer was actually assigned by an admin, not free
+                  // text: a typo or case difference here used to mean the
+                  // exercise silently never appeared to anyone enrolled.
+                  Consumer<AuthProvider>(
+                    builder: (context, authProvider, _) {
+                      final courses =
+                          authProvider.currentUser?.assignedCourses ??
+                          const [];
+
+                      if (courses.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.amber),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'You have no assigned courses yet — ask '
+                                  'an admin to assign one before you can '
+                                  'publish an exercise.',
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (_selectedCourseIndex >= courses.length) {
+                        _selectedCourseIndex = 0;
+                      }
+
+                      return DropdownButtonFormField<int>(
+                        initialValue: _selectedCourseIndex,
+                        isExpanded: true,
+                        dropdownColor: AppTheme.surfaceGlass,
+                        style: const TextStyle(color: AppTheme.textBright),
+                        decoration: const InputDecoration(
+                          labelText: 'Course',
+                          prefixIcon: Icon(
+                            Icons.menu_book,
+                            color: AppTheme.primaryCyan,
+                          ),
+                        ),
+                        items: [
+                          for (var i = 0; i < courses.length; i++)
+                            DropdownMenuItem(
+                              value: i,
+                              child: Text(
+                                '${courses[i]['code']} — '
+                                '${courses[i]['title']}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (index) =>
+                            setState(() => _selectedCourseIndex = index!),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -236,70 +425,32 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                  // Canvas Topology Linker Bar
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundMidnight.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.primaryCyan.withValues(alpha: 0.3),
+                  // Time limit — optional. When set, the student's canvas
+                  // shows a countdown from the moment they open it and
+                  // auto-submits the instant it reaches zero (see
+                  // CanvasBuilderScreen). This exercise's number within its
+                  // course ("Assessment 3") is assigned automatically on
+                  // publish, not chosen here — see
+                  // LecturerManagementService._nextAssessmentNumber.
+                  TextFormField(
+                    controller: _timeLimitController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: AppTheme.textBright),
+                    decoration: const InputDecoration(
+                      labelText: 'Time Limit in Minutes (optional)',
+                      hintText: 'e.g. 30 — leave blank for no time limit',
+                      prefixIcon: Icon(
+                        Icons.timer_outlined,
+                        color: AppTheme.primaryCyan,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.architecture,
-                          color: AppTheme.primaryCyan,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Linked Starter Topology Canvas: $_starterCanvasId',
-                                style: const TextStyle(
-                                  color: AppTheme.textBright,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Contains unconfigured routers and switches provided to students.',
-                                style: TextStyle(
-                                  color: AppTheme.textMuted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          icon: const Icon(
-                            Icons.open_in_new,
-                            size: 16,
-                            color: AppTheme.primaryCyan,
-                          ),
-                          label: const Text(
-                            'Design Canvas',
-                            style: TextStyle(color: AppTheme.primaryCyan),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppTheme.primaryCyan),
-                          ),
-                          onPressed: () {
-                            context.go(
-                              '/canvas-builder/authoring_starter_template',
-                            );
-                          },
-                        ),
-                      ],
-                    ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // Solution Canvas Designer
+                  _buildSolutionCanvasPanel(),
                   const SizedBox(height: 28),
 
                   // Submit Button
@@ -326,6 +477,78 @@ class _ExerciseAuthoringTabState extends State<ExerciseAuthoringTab> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Panel where the lecturer builds the worked solution students are graded
+  /// against, and sees at a glance whether anything has been designed yet.
+  Widget _buildSolutionCanvasPanel() {
+    final hasSolution = _solutionDeviceCount > 0;
+    final accent = hasSolution ? AppTheme.accentEmerald : Colors.amber;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundMidnight.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasSolution ? Icons.verified : Icons.architecture,
+            color: accent,
+            size: 28,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasSolution
+                      ? 'Solution designed — this is the answer key'
+                      : 'No solution designed yet',
+                  style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _isCheckingSolution
+                      ? 'Checking saved canvas…'
+                      : hasSolution
+                      ? '$_solutionDeviceCount device'
+                            '${_solutionDeviceCount == 1 ? '' : 's'}, '
+                            '$_solutionCableCount cable'
+                            '${_solutionCableCount == 1 ? '' : 's'}. '
+                            'Students must reproduce this to pass.'
+                      : 'Open the canvas, place the devices and connect them '
+                            'the correct way, then press Save Canvas.',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            icon: const Icon(
+              Icons.open_in_new,
+              size: 16,
+              color: AppTheme.primaryCyan,
+            ),
+            label: Text(
+              hasSolution ? 'Edit Solution' : 'Design Solution',
+              style: const TextStyle(color: AppTheme.primaryCyan),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.primaryCyan),
+            ),
+            onPressed: _openSolutionCanvas,
           ),
         ],
       ),

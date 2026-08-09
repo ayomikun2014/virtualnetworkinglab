@@ -17,7 +17,8 @@ class TimestampConverter implements JsonConverter<DateTime, Object> {
     } else if (json is Map) {
       // Handles raw map {_seconds: 12345, _nanoseconds: 67890}
       final seconds = json['_seconds'] as int? ?? json['seconds'] as int? ?? 0;
-      final nanoseconds = json['_nanoseconds'] as int? ?? json['nanoseconds'] as int? ?? 0;
+      final nanoseconds =
+          json['_nanoseconds'] as int? ?? json['nanoseconds'] as int? ?? 0;
       return Timestamp(seconds, nanoseconds).toDate();
     }
     return DateTime.now();

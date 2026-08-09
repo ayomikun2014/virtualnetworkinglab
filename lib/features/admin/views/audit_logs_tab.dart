@@ -10,7 +10,9 @@ class AuditLogsTab extends StatelessWidget {
   Color _getEventColor(String action) {
     if (action.contains('PROVISION') || action.contains('CREATE')) {
       return AppTheme.accentEmerald;
-    } else if (action.contains('SECURITY') || action.contains('DELETE') || action.contains('FAIL')) {
+    } else if (action.contains('SECURITY') ||
+        action.contains('DELETE') ||
+        action.contains('FAIL')) {
       return AppTheme.accentCrimson;
     } else if (action.contains('LOGIN') || action.contains('AUTH')) {
       return AppTheme.primaryCyan;
@@ -36,7 +38,11 @@ class AuditLogsTab extends StatelessWidget {
       children: [
         const Text(
           'Security & System Audit Logs',
-          style: TextStyle(color: AppTheme.textBright, fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppTheme.textBright,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 4),
         const Text(
@@ -47,7 +53,7 @@ class AuditLogsTab extends StatelessWidget {
 
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('${AppConstants.rootPath}/${AppConstants.activityLogsCollection}')
+              .collection(AppConstants.currentActivityLogsCollection)
               .orderBy('timestamp', descending: true)
               .snapshots(),
           builder: (context, snapshot) {
@@ -70,7 +76,10 @@ class AuditLogsTab extends StatelessWidget {
                   border: Border.all(color: AppTheme.borderSubtle),
                 ),
                 child: const Center(
-                  child: Text('No security events recorded in the audit trail.', style: TextStyle(color: AppTheme.textMuted)),
+                  child: Text(
+                    'No security events recorded in the audit trail.',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
                 ),
               );
             }
@@ -82,7 +91,8 @@ class AuditLogsTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final data = docs[index].data() as Map<String, dynamic>;
                 final action = data['action'] ?? 'AUDIT_EVENT';
-                final description = data['description'] ?? 'System activity occurred';
+                final description =
+                    data['description'] ?? 'System activity occurred';
                 final performedBy = data['performedBy'] ?? 'Root Admin';
                 final timestamp = data['timestamp'] ?? '';
 
@@ -115,15 +125,24 @@ class AuditLogsTab extends StatelessWidget {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: color.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                                    border: Border.all(
+                                      color: color.withValues(alpha: 0.3),
+                                    ),
                                   ),
                                   child: Text(
                                     action,
-                                    style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: color,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -131,20 +150,34 @@ class AuditLogsTab extends StatelessWidget {
                                   child: Text(
                                     'By $performedBy',
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                                    style: const TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(description, style: const TextStyle(color: AppTheme.textBright, fontSize: 13)),
+                            Text(
+                              description,
+                              style: const TextStyle(
+                                color: AppTheme.textBright,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        timestamp.length > 16 ? timestamp.substring(0, 16).replaceAll('T', ' ') : timestamp,
-                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                        timestamp.length > 16
+                            ? timestamp.substring(0, 16).replaceAll('T', ' ')
+                            : timestamp,
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),

@@ -10,7 +10,10 @@ import '../models/user_model.dart';
 abstract class IAuthRepository {
   Stream<User?> get authStateChanges;
   User? get currentUser;
-  Future<UserModel> login({required String identifier, required String password});
+  Future<UserModel> login({
+    required String identifier,
+    required String password,
+  });
   Future<UserModel> registerStudent({
     required String email,
     required String password,
@@ -18,6 +21,12 @@ abstract class IAuthRepository {
     required String studentIdNumber,
     required String departmentId,
     List<String> enrolledCourseIds,
+  });
+  Future<UserModel> registerLecturer({
+    required String email,
+    required String password,
+    required String displayName,
+    required String departmentId,
   });
   Future<void> signOut();
   Future<UserModel?> getCurrentUserProfile();
@@ -33,9 +42,9 @@ class FirebaseAuthRepository implements IAuthRepository {
     AuthService? authService,
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _authService = authService ?? AuthService();
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _authService = authService ?? AuthService();
 
   @override
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -57,7 +66,23 @@ class FirebaseAuthRepository implements IAuthRepository {
     final userProfile = await _fetchUserProfile(uid);
 
     if (userProfile == null) {
-      throw const AuthFailure('User authenticated but profile document was not found.');
+      throw const AuthFailure(
+        'User authenticated but profile document was not found.',
+      );
+    }
+
+    // A suspended account keeps its Firebase Auth credentials (there is no
+    // client-side way to revoke those without an Admin SDK), so the
+    // password alone would otherwise still get someone in. Signed out
+    // immediately rather than left half-authenticated: otherwise
+    // AuthProvider would briefly hold a suspended user's profile before
+    // whatever caller checks isActive gets around to it, and the router's
+    // redirect logic doesn't know to look.
+    if (!userProfile.isActive) {
+      await _auth.signOut();
+      throw const AuthFailure(
+        'This account has been suspended. Contact an administrator.',
+      );
     }
 
     return userProfile;
@@ -79,6 +104,21 @@ class FirebaseAuthRepository implements IAuthRepository {
       studentIdNumber: studentIdNumber,
       departmentId: departmentId,
       enrolledCourseIds: enrolledCourseIds,
+    );
+  }
+
+  @override
+  Future<UserModel> registerLecturer({
+    required String email,
+    required String password,
+    required String displayName,
+    required String departmentId,
+  }) async {
+    return await _authService.registerLecturer(
+      email: email,
+      password: password,
+      displayName: displayName,
+      departmentId: departmentId,
     );
   }
 
@@ -105,9 +145,13 @@ class FirebaseAuthRepository implements IAuthRepository {
       if (!doc.exists || doc.data() == null) {
         final authUser = currentUser;
         final email = authUser?.email ?? '';
-        final isAdmin = email.toLowerCase() == 'admin@virtuanetlab.univ.edu' || email.toLowerCase().startsWith('admin');
+        final isAdmin =
+            email.toLowerCase() == 'adminlab@gmail.com' ||
+            email.toLowerCase().startsWith('admin');
         final role = isAdmin ? UserRole.admin : UserRole.student;
-        final name = isAdmin ? 'Root Administrator' : (authUser?.displayName ?? 'User Account');
+        final name = isAdmin
+            ? 'Root Administrator'
+            : (authUser?.displayName ?? 'User Account');
         final now = DateTime.now();
 
         final newProfile = UserModel(

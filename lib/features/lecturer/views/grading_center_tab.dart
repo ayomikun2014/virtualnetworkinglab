@@ -4,9 +4,18 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../services/lecturer_management_service.dart';
 
-/// Lecturer Tab 3: Grading Center & Manual Grade Overrides
+/// Lecturer Tab 2: Grading Center — real, per-student results.
+///
+/// Course assessments are graded automatically the moment a student
+/// submits (percentage of correct devices/cables, see `TopologyGrader` and
+/// `GradingProvider.checkTopology`), so there is nothing left for a
+/// lecturer to manually score here. This is a read-only view of what every
+/// student actually scored on every course exercise this lecturer
+/// authored — sourced from `exercise_results`, the denormalised record
+/// `FirebaseGradingRepository.recordAttempt` writes for exactly that
+/// purpose. Free Practice attempts never appear here: they're a separate
+/// system with no lecturer attached.
 class GradingCenterTab extends StatefulWidget {
   const GradingCenterTab({super.key});
 
@@ -15,157 +24,46 @@ class GradingCenterTab extends StatefulWidget {
 }
 
 class _GradingCenterTabState extends State<GradingCenterTab> {
-  final _service = LecturerManagementService();
-
-  void _showGradingModal(BuildContext context, Map<String, dynamic> data, String submissionId, String lecturerUid) {
-    final formKey = GlobalKey<FormState>();
-    final scoreController = TextEditingController(text: (data['finalScore'] ?? 95.0).toString());
-    final feedbackController = TextEditingController(text: data['lecturerFeedback'] ?? 'Great job on the OSPF configuration!');
-    bool isSaving = false;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.surfaceGlass,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppTheme.borderSubtle),
-              ),
-              title: Row(
-                children: const [
-                  Icon(Icons.grade, color: AppTheme.primaryCyan),
-                  SizedBox(width: 10),
-                  Text('Submission Evaluation & Grade Override', style: TextStyle(color: AppTheme.textBright, fontSize: 18)),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: SizedBox(
-                  width: 500,
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Automated Engine Results
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.backgroundMidnight.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.accentEmerald.withValues(alpha: 0.4)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text('Automated Lab Evaluation Results:', style: TextStyle(color: AppTheme.textBright, fontWeight: FontWeight.bold, fontSize: 13)),
-                              SizedBox(height: 8),
-                              Text('✓ ICMP Echo Ping: Passed (100% Reachability)', style: TextStyle(color: AppTheme.accentEmerald, fontSize: 12)),
-                              Text('✓ OSPF Adjacency: Passed (FULL/DR State)', style: TextStyle(color: AppTheme.accentEmerald, fontSize: 12)),
-                              Text('✓ IP Addressing: Passed (Subnet Mask Correct)', style: TextStyle(color: AppTheme.accentEmerald, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Score Input
-                        TextFormField(
-                          controller: scoreController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: AppTheme.textBright),
-                          decoration: const InputDecoration(
-                            labelText: 'Final Score (Max: 100)',
-                            prefixIcon: Icon(Icons.stars, color: AppTheme.primaryCyan),
-                          ),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Enter score' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Feedback Input
-                        TextFormField(
-                          controller: feedbackController,
-                          maxLines: 3,
-                          style: const TextStyle(color: AppTheme.textBright),
-                          decoration: const InputDecoration(
-                            labelText: 'Lecturer Evaluation Feedback',
-                            prefixIcon: Icon(Icons.comment, color: AppTheme.primaryCyan),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter feedback' : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-                ),
-                ElevatedButton.icon(
-                  icon: isSaving
-                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.backgroundMidnight))
-                      : const Icon(Icons.check, size: 18),
-                  label: const Text('Save Grade & Release'),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-
-                          setModalState(() => isSaving = true);
-                          final score = double.tryParse(scoreController.text) ?? 95.0;
-
-                          final success = await _service.submitGradeOverride(
-                            submissionId: submissionId,
-                            finalScore: score,
-                            feedback: feedbackController.text.trim(),
-                            lecturerUid: lecturerUid,
-                          );
-
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(success ? 'Grade override saved!' : 'Failed to save grade.'),
-                                backgroundColor: success ? AppTheme.accentEmerald : AppTheme.accentCrimson,
-                              ),
-                            );
-                          }
-                        },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
+  /// Filters the list to one course code, or null for every course this
+  /// lecturer teaches.
+  String? _courseFilter;
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final lecturerUid = authProvider.currentUser?.uid ?? 'lecturer';
+    final lecturerUid = Provider.of<AuthProvider>(
+      context,
+    ).currentUser?.uid;
+
+    if (lecturerUid == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryCyan),
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         const Text(
-          'Student Submissions & Grading Center',
-          style: TextStyle(color: AppTheme.textBright, fontSize: 20, fontWeight: FontWeight.bold),
+          'Student Results',
+          style: TextStyle(
+            color: AppTheme.textBright,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 4),
         const Text(
-          'Inspect student frozen topology snapshots, review automated engine evaluations, and assign manual grade overrides.',
+          'Every course assessment submission, graded automatically the '
+          'moment a student submits — nothing here needs manual scoring.',
           style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('${AppConstants.rootPath}/submissions')
+              .collection(AppConstants.exerciseResultsCollection)
+              .where('authorUid', isEqualTo: lecturerUid)
+              .orderBy('attemptedAt', descending: true)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -177,71 +75,146 @@ class _GradingCenterTabState extends State<GradingCenterTab> {
               );
             }
 
-            final docs = snapshot.data?.docs ?? [];
-            if (docs.isEmpty) {
-              // Sample Demo Submissions Cards if collection is fresh
-              return ListView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildSampleSubmissionCard(
-                    context,
-                    submissionId: 'sub_001',
-                    studentName: 'Alex Johnson',
-                    matric: 'NT20240111512',
-                    labTitle: 'Assessment 1: Single Area OSPF Convergence',
-                    status: 'Pending Review',
-                    statusColor: Colors.amber,
-                    score: '95 / 100',
-                    lecturerUid: lecturerUid,
+            if (snapshot.hasError) {
+              // Also to the console: a missing composite index error embeds
+              // a direct "create this index" link, and the console
+              // auto-links URLs where the wrapped Text widget below can't —
+              // same reasoning as ExerciseProvider.fetchCourseAssessments.
+              debugPrint('GradingCenterTab: failed to load results: '
+                  '${snapshot.error}');
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceGlass,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.accentCrimson.withValues(alpha: 0.4),
                   ),
-                  const SizedBox(height: 12),
-                  _buildSampleSubmissionCard(
-                    context,
-                    submissionId: 'sub_002',
-                    studentName: 'Maria Garcia',
-                    matric: 'NT20240111513',
-                    labTitle: 'Assessment 2: VLAN Trunking & Inter-VLAN Routing',
-                    status: 'Graded',
-                    statusColor: AppTheme.accentEmerald,
-                    score: '98 / 100',
-                    lecturerUid: lecturerUid,
-                  ),
-                ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppTheme.accentCrimson,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Could not load results: ${snapshot.error}',
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
 
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: docs.length,
-              itemBuilder: (context, index) {
-                final data = docs[index].data() as Map<String, dynamic>;
-                final subId = docs[index].id;
-                final student = data['studentName'] ?? 'Student';
-                final matric = data['studentIdNumber'] ?? 'NT20240111512';
-                final lab = data['exerciseTitle'] ?? 'OSPF Lab Assignment';
-                final status = (data['status'] ?? 'pending').toString().toUpperCase();
-                final score = data['finalScore'] ?? 95.0;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primaryCyan.withValues(alpha: 0.15),
-                      child: const Icon(Icons.assignment_turned_in, color: AppTheme.primaryCyan),
-                    ),
-                    title: Text(student, style: const TextStyle(color: AppTheme.textBright, fontWeight: FontWeight.bold, fontSize: 16)),
-                    subtitle: Text('Matric: $matric • $lab • Status: $status', style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-                    trailing: ElevatedButton.icon(
-                      icon: const Icon(Icons.rate_review, size: 16),
-                      label: Text('Grade ($score)'),
-                      onPressed: () => _showGradingModal(context, data, subId, lecturerUid),
-                    ),
+            final allDocs = snapshot.data?.docs ?? [];
+            if (allDocs.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceGlass,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderSubtle),
+                ),
+                child: const Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.assignment_turned_in_outlined,
+                        size: 48,
+                        color: AppTheme.textMuted,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'No submissions yet',
+                        style: TextStyle(
+                          color: AppTheme.textBright,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Results appear here the moment a student submits '
+                        'one of your course assessments.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+              );
+            }
+
+            final courseCodes = allDocs
+                .map((d) => (d.data() as Map<String, dynamic>)['exerciseId'])
+                .toSet();
+            // Course code isn't stored directly on the result — it comes
+            // along with exerciseTitle from the exercise itself, which
+            // doesn't carry categoryId either. Filtering by exercise title
+            // prefix would be fragile, so the filter chips key on
+            // exerciseId instead: precise, even if the label is the title
+            // rather than a course code.
+            final exerciseTitles = <String, String>{
+              for (final doc in allDocs)
+                (doc.data() as Map<String, dynamic>)['exerciseId']
+                        as String? ??
+                    '':
+                    (doc.data() as Map<String, dynamic>)['exerciseTitle']
+                            as String? ??
+                        'Untitled',
+            };
+
+            final docs = _courseFilter == null
+                ? allDocs
+                : allDocs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['exerciseId'] == _courseFilter;
+                  }).toList();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (courseCodes.length > 1) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('All'),
+                        selected: _courseFilter == null,
+                        onSelected: (_) =>
+                            setState(() => _courseFilter = null),
+                      ),
+                      for (final exerciseId in exerciseTitles.keys)
+                        ChoiceChip(
+                          label: Text(exerciseTitles[exerciseId]!),
+                          selected: _courseFilter == exerciseId,
+                          onSelected: (_) =>
+                              setState(() => _courseFilter = exerciseId),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    return _buildResultCard(data);
+                  },
+                ),
+              ],
             );
           },
         ),
@@ -249,53 +222,99 @@ class _GradingCenterTabState extends State<GradingCenterTab> {
     );
   }
 
-  Widget _buildSampleSubmissionCard(
-    BuildContext context, {
-    required String submissionId,
-    required String studentName,
-    required String matric,
-    required String labTitle,
-    required String status,
-    required Color statusColor,
-    required String score,
-    required String lecturerUid,
-  }) {
+  Widget _buildResultCard(Map<String, dynamic> data) {
+    final studentName = data['studentName'] as String? ?? 'Student';
+    final studentEmail = data['studentEmail'] as String? ?? '';
+    final exerciseTitle = data['exerciseTitle'] as String? ?? 'Assessment';
+    final passed = data['passed'] as bool? ?? false;
+    final correct = (data['correctChecks'] as num?)?.toInt() ?? 0;
+    final total = (data['totalChecks'] as num?)?.toInt() ?? 0;
+    final scorePercent = total == 0 ? 0.0 : (correct / total) * 100;
+    final attemptedAt = DateTime.tryParse(
+      data['attemptedAt'] as String? ?? '',
+    );
+
+    final statusColor = passed ? AppTheme.accentEmerald : AppTheme.accentCrimson;
+
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryCyan.withValues(alpha: 0.15),
-          child: const Icon(Icons.assignment_turned_in, color: AppTheme.primaryCyan),
-        ),
-        title: Row(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            Text(studentName, style: const TextStyle(color: AppTheme.textBright, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryCyan.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
+            CircleAvatar(
+              backgroundColor: statusColor.withValues(alpha: 0.15),
+              child: Icon(
+                passed ? Icons.check_circle_outline : Icons.cancel_outlined,
+                color: statusColor,
               ),
-              child: Text(matric, style: const TextStyle(color: AppTheme.primaryCyan, fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    studentName,
+                    style: const TextStyle(
+                      color: AppTheme.textBright,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  Text(
+                    '$studentEmail • $exerciseTitle',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (attemptedAt != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatTimestamp(attemptedAt),
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${scorePercent.round()}%',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+                  '$correct/$total correct',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        subtitle: Text(labTitle, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-        trailing: ElevatedButton.icon(
-          icon: const Icon(Icons.rate_review, size: 16),
-          label: Text('Grade ($score)'),
-          onPressed: () => _showGradingModal(
-            context,
-            {
-              'finalScore': 95.0,
-              'lecturerFeedback': 'Excellent IEEE 802.1Q trunking configuration.',
-            },
-            submissionId,
-            lecturerUid,
-          ),
-        ),
       ),
     );
+  }
+
+  static String _formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inDays == 0 && now.day == dt.day) return 'Today';
+    if (diff.inDays <= 1 && now.day - dt.day == 1) return 'Yesterday';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

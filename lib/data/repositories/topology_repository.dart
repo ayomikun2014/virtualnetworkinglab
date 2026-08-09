@@ -15,7 +15,7 @@ class FirebaseTopologyRepository implements ITopologyRepository {
   final FirebaseFirestore _firestore;
 
   FirebaseTopologyRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
   Stream<TopologyModel?> watchTopology(String topologyId) {
@@ -23,9 +23,11 @@ class FirebaseTopologyRepository implements ITopologyRepository {
         .collection(AppConstants.topologiesCollection)
         .doc(topologyId)
         .snapshots()
-        .map((snap) => snap.exists && snap.data() != null
-            ? TopologyModel.fromJson(snap.data()!)
-            : null);
+        .map(
+          (snap) => snap.exists && snap.data() != null
+              ? TopologyModel.fromJson(snap.data()!)
+              : null,
+        );
   }
 
   @override

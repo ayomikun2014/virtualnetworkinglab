@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/enums/app_enums.dart';
+import '../../../core/widgets/app_notification.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_logo_widget.dart';
 import '../providers/auth_provider.dart';
@@ -23,7 +25,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   String _selectedDepartment = 'dept_net';
-  final List<String> _selectedCourseIds = ['crs_net201'];
+
+  /// Which kind of account this form creates. Student is the default: it's
+  /// the overwhelmingly common case, and a lecturer signing up is a
+  /// deliberate choice rather than something to default into.
+  UserRole _selectedRole = UserRole.student;
+
+  // A brand-new student isn't enrolled in anything until they actually join
+  // a class with a real lecturer-issued code — 'crs_net201' was a
+  // placeholder id that never matched any class a lecturer could actually
+  // create (those use courseId values like 'NET201'), so every new
+  // student silently "enrolled" in a course that could never exist.
+  final List<String> _selectedCourseIds = const [];
 
   @override
   void dispose() {
@@ -39,23 +52,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.clearError();
 
-    final success = await authProvider.registerStudent(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      displayName: _fullNameController.text.trim(),
-      studentIdNumber: _matricController.text.trim().toUpperCase(),
-      departmentId: _selectedDepartment,
-      enrolledCourseIds: _selectedCourseIds,
-    );
+    // On success, deliberately don't navigate here: AppRouter's redirect
+    // already sends a signed-in user away from /register the moment
+    // AuthProvider.currentUser becomes non-null (see app_routes.dart) — for
+    // a lecturer that lands on /pending-approval rather than the dashboard,
+    // since the redirect also checks approvalStatus. A second, manual
+    // navigation from this screen raced that automatic one — whichever ran
+    // first would unmount this screen while the other still had a pending
+    // timer/callback referencing it.
+    final success = _selectedRole == UserRole.lecturer
+        ? await authProvider.registerLecturer(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            displayName: _fullNameController.text.trim(),
+            departmentId: _selectedDepartment,
+          )
+        : await authProvider.registerStudent(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            displayName: _fullNameController.text.trim(),
+            studentIdNumber: _matricController.text.trim().toUpperCase(),
+            departmentId: _selectedDepartment,
+            enrolledCourseIds: _selectedCourseIds,
+          );
 
     if (!success && mounted && authProvider.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
-          backgroundColor: AppTheme.accentCrimson,
-        ),
-      );
+      AppNotifier.error(context, authProvider.errorMessage!);
     }
   }
 
@@ -109,7 +133,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back, color: AppTheme.textBright),
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: AppTheme.textBright,
+                            ),
                             onPressed: () => context.go('/login'),
                           ),
                           const SizedBox(width: 8),
@@ -117,8 +144,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Student Signup',
-                              style: TextStyle(
+                              _selectedRole == UserRole.lecturer
+                                  ? 'Lecturer Signup'
+                                  : 'Student Signup',
+                              style: const TextStyle(
                                 color: AppTheme.textBright,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -127,7 +156,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+
+                      // Role Toggle — Student vs Lecturer
+                      SegmentedButton<UserRole>(
+                        segments: const [
+                          ButtonSegment(
+                            value: UserRole.student,
+                            label: Text('Student'),
+                            icon: Icon(Icons.school, size: 16),
+                          ),
+                          ButtonSegment(
+                            value: UserRole.lecturer,
+                            label: Text('Lecturer'),
+                            icon: Icon(Icons.badge, size: 16),
+                          ),
+                        ],
+                        selected: {_selectedRole},
+                        onSelectionChanged: (selection) =>
+                            setState(() => _selectedRole = selection.first),
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.resolveWith((
+                            states,
+                          ) {
+                            return states.contains(WidgetState.selected)
+                                ? AppTheme.primaryCyan.withValues(alpha: 0.2)
+                                : Colors.transparent;
+                          }),
+                          foregroundColor: WidgetStateProperty.resolveWith((
+                            states,
+                          ) {
+                            return states.contains(WidgetState.selected)
+                                ? AppTheme.primaryCyan
+                                : AppTheme.textMuted;
+                          }),
+                          side: const WidgetStatePropertyAll(
+                            BorderSide(color: AppTheme.borderSubtle),
+                          ),
+                        ),
+                      ),
+                      if (_selectedRole == UserRole.lecturer) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryCyan.withValues(
+                              alpha: 0.08,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.primaryCyan.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: AppTheme.primaryCyan,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'A lecturer account needs admin approval '
+                                  'before it can access the lecturer '
+                                  'dashboard.',
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
 
                       // Full Name
                       TextFormField(
@@ -136,7 +242,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Full Name',
                           hintText: 'Alex Johnson',
-                          prefixIcon: Icon(Icons.badge, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.badge,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().length < 2) {
@@ -147,23 +256,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Matriculation Number Field (NT20010100001)
-                      TextFormField(
-                        controller: _matricController,
-                        style: const TextStyle(color: AppTheme.textBright),
-                        decoration: const InputDecoration(
-                          labelText: 'Matriculation Number',
-                          hintText: 'NT20010100001',
-                          prefixIcon: Icon(Icons.verified_user, color: AppTheme.primaryCyan),
+                      // Matriculation Number — students only. A lecturer
+                      // has no matric number, and validating an empty field
+                      // against the NT-YYYY-XXXXX pattern would block every
+                      // lecturer signup on a field that doesn't apply to them.
+                      if (_selectedRole == UserRole.student) ...[
+                        TextFormField(
+                          controller: _matricController,
+                          style: const TextStyle(color: AppTheme.textBright),
+                          decoration: const InputDecoration(
+                            labelText: 'Matriculation Number',
+                            hintText: 'NT20010100001',
+                            prefixIcon: Icon(
+                              Icons.verified_user,
+                              color: AppTheme.primaryCyan,
+                            ),
+                          ),
+                          validator: (val) {
+                            if (val == null ||
+                                !Validators.isValidMatricNumber(val.trim())) {
+                              return 'Invalid format. Must match NT-YYYY-XXXXX (e.g. NT20010100001)';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (val) {
-                          if (val == null || !Validators.isValidMatricNumber(val.trim())) {
-                            return 'Invalid format. Must match NT-YYYY-XXXXX (e.g. NT20010100001)';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Institutional Email
                       TextFormField(
@@ -172,10 +290,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Institutional Email Address',
                           hintText: 'alex.johnson@univ.edu',
-                          prefixIcon: Icon(Icons.email, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.email,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         validator: (val) {
-                          if (val == null || !Validators.isValidEmail(val.trim())) {
+                          if (val == null ||
+                              !Validators.isValidEmail(val.trim())) {
                             return 'Enter a valid institutional email';
                           }
                           return null;
@@ -186,19 +308,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       // Department Picker Dropdown
                       DropdownButtonFormField<String>(
                         initialValue: _selectedDepartment,
+                        // Without this, the closed button sizes itself to
+                        // the widest item's natural width instead of the
+                        // field's available width — the two longest
+                        // department names overflowed the form by ~60px.
+                        isExpanded: true,
                         dropdownColor: AppTheme.surfaceGlass,
                         style: const TextStyle(color: AppTheme.textBright),
                         decoration: const InputDecoration(
                           labelText: 'Academic Department',
-                          prefixIcon: Icon(Icons.school, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.school,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'dept_net', child: Text('Networking & Telecommunications')),
-                          DropdownMenuItem(value: 'dept_cs', child: Text('Computer Science')),
-                          DropdownMenuItem(value: 'dept_sec', child: Text('Cybersecurity & Infrastructure')),
-                          DropdownMenuItem(value: 'dept_se', child: Text('Software Engineering')),
+                          DropdownMenuItem(
+                            value: 'dept_net',
+                            child: Text(
+                              'Networking & Telecommunications',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dept_cs',
+                            child: Text('Computer Science'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dept_sec',
+                            child: Text(
+                              'Cybersecurity & Infrastructure',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dept_se',
+                            child: Text('Software Engineering'),
+                          ),
                         ],
-                        onChanged: (val) => setState(() => _selectedDepartment = val!),
+                        onChanged: (val) =>
+                            setState(() => _selectedDepartment = val!),
                       ),
                       const SizedBox(height: 16),
 
@@ -209,7 +358,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: const TextStyle(color: AppTheme.textBright),
                         decoration: const InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.lock,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         validator: (val) {
                           if (val == null || val.length < 6) {
@@ -227,7 +379,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: const TextStyle(color: AppTheme.textBright),
                         decoration: const InputDecoration(
                           labelText: 'Confirm Password',
-                          prefixIcon: Icon(Icons.lock_clock, color: AppTheme.primaryCyan),
+                          prefixIcon: Icon(
+                            Icons.lock_clock,
+                            color: AppTheme.primaryCyan,
+                          ),
                         ),
                         validator: (val) {
                           if (val != _passwordController.text) {
@@ -242,7 +397,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: authProvider.isLoading ? null : _handleRegister,
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _handleRegister,
                           child: authProvider.isLoading
                               ? const SizedBox(
                                   height: 20,
@@ -252,7 +409,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     color: AppTheme.backgroundMidnight,
                                   ),
                                 )
-                              : const Text('Complete Student Registration'),
+                              : Text(
+                                  _selectedRole == UserRole.lecturer
+                                      ? 'Complete Lecturer Registration'
+                                      : 'Complete Student Registration',
+                                ),
                         ),
                       ),
                     ],

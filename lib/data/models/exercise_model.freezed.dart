@@ -24,7 +24,14 @@ mixin _$ExerciseModel {
   String get exerciseId => throw _privateConstructorUsedError;
   String get title => throw _privateConstructorUsedError;
   String get description => throw _privateConstructorUsedError;
+
+  /// Course this exercise belongs to. Students see it when this matches one
+  /// of their `enrolledCourseIds`.
   String get categoryId => throw _privateConstructorUsedError;
+
+  /// Human-readable course name, denormalised onto the exercise so the
+  /// student's assessment list can show it without a second read per card.
+  String get courseTitle => throw _privateConstructorUsedError;
   @JsonKey(unknownEnumValue: ExerciseType.unknown)
   ExerciseType get exerciseType => throw _privateConstructorUsedError;
   DifficultyLevel get difficulty => throw _privateConstructorUsedError;
@@ -33,6 +40,21 @@ mixin _$ExerciseModel {
   int get maxScore => throw _privateConstructorUsedError;
   bool get isPublished => throw _privateConstructorUsedError;
   int? get practiceLevel => throw _privateConstructorUsedError;
+
+  /// This exercise's position among every exercise published under the
+  /// same [categoryId] — "Assessment 3" is the third exercise a lecturer
+  /// has ever published for that course, in publish order. Computed once
+  /// at publish time (see `LecturerManagementService.createExercise`), not
+  /// derived at read time, so it stays stable even if earlier assessments
+  /// are later unpublished. Null for a Free Practice level, which uses
+  /// [practiceLevel] and its own "LEVEL N" numbering instead.
+  int? get assessmentNumber => throw _privateConstructorUsedError;
+
+  /// Minutes a student has once they open this exercise, or null for no
+  /// limit. When set, the canvas shows a countdown and auto-submits via
+  /// Check Connection the moment it reaches zero — set by the lecturer at
+  /// publish time, not something a student can change.
+  int? get timeLimitMinutes => throw _privateConstructorUsedError;
   Map<String, dynamic>? get securityConfig =>
       throw _privateConstructorUsedError;
   @TimestampConverter()
@@ -62,6 +84,7 @@ abstract class $ExerciseModelCopyWith<$Res> {
     String title,
     String description,
     String categoryId,
+    String courseTitle,
     @JsonKey(unknownEnumValue: ExerciseType.unknown) ExerciseType exerciseType,
     DifficultyLevel difficulty,
     String authorUid,
@@ -69,6 +92,8 @@ abstract class $ExerciseModelCopyWith<$Res> {
     int maxScore,
     bool isPublished,
     int? practiceLevel,
+    int? assessmentNumber,
+    int? timeLimitMinutes,
     Map<String, dynamic>? securityConfig,
     @TimestampConverter() DateTime createdAt,
     @TimestampConverter() DateTime updatedAt,
@@ -94,6 +119,7 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
     Object? title = null,
     Object? description = null,
     Object? categoryId = null,
+    Object? courseTitle = null,
     Object? exerciseType = null,
     Object? difficulty = null,
     Object? authorUid = null,
@@ -101,6 +127,8 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
     Object? maxScore = null,
     Object? isPublished = null,
     Object? practiceLevel = freezed,
+    Object? assessmentNumber = freezed,
+    Object? timeLimitMinutes = freezed,
     Object? securityConfig = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -122,6 +150,10 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
             categoryId: null == categoryId
                 ? _value.categoryId
                 : categoryId // ignore: cast_nullable_to_non_nullable
+                      as String,
+            courseTitle: null == courseTitle
+                ? _value.courseTitle
+                : courseTitle // ignore: cast_nullable_to_non_nullable
                       as String,
             exerciseType: null == exerciseType
                 ? _value.exerciseType
@@ -150,6 +182,14 @@ class _$ExerciseModelCopyWithImpl<$Res, $Val extends ExerciseModel>
             practiceLevel: freezed == practiceLevel
                 ? _value.practiceLevel
                 : practiceLevel // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            assessmentNumber: freezed == assessmentNumber
+                ? _value.assessmentNumber
+                : assessmentNumber // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            timeLimitMinutes: freezed == timeLimitMinutes
+                ? _value.timeLimitMinutes
+                : timeLimitMinutes // ignore: cast_nullable_to_non_nullable
                       as int?,
             securityConfig: freezed == securityConfig
                 ? _value.securityConfig
@@ -183,6 +223,7 @@ abstract class _$$ExerciseModelImplCopyWith<$Res>
     String title,
     String description,
     String categoryId,
+    String courseTitle,
     @JsonKey(unknownEnumValue: ExerciseType.unknown) ExerciseType exerciseType,
     DifficultyLevel difficulty,
     String authorUid,
@@ -190,6 +231,8 @@ abstract class _$$ExerciseModelImplCopyWith<$Res>
     int maxScore,
     bool isPublished,
     int? practiceLevel,
+    int? assessmentNumber,
+    int? timeLimitMinutes,
     Map<String, dynamic>? securityConfig,
     @TimestampConverter() DateTime createdAt,
     @TimestampConverter() DateTime updatedAt,
@@ -214,6 +257,7 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
     Object? title = null,
     Object? description = null,
     Object? categoryId = null,
+    Object? courseTitle = null,
     Object? exerciseType = null,
     Object? difficulty = null,
     Object? authorUid = null,
@@ -221,6 +265,8 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
     Object? maxScore = null,
     Object? isPublished = null,
     Object? practiceLevel = freezed,
+    Object? assessmentNumber = freezed,
+    Object? timeLimitMinutes = freezed,
     Object? securityConfig = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -242,6 +288,10 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
         categoryId: null == categoryId
             ? _value.categoryId
             : categoryId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        courseTitle: null == courseTitle
+            ? _value.courseTitle
+            : courseTitle // ignore: cast_nullable_to_non_nullable
                   as String,
         exerciseType: null == exerciseType
             ? _value.exerciseType
@@ -271,6 +321,14 @@ class __$$ExerciseModelImplCopyWithImpl<$Res>
             ? _value.practiceLevel
             : practiceLevel // ignore: cast_nullable_to_non_nullable
                   as int?,
+        assessmentNumber: freezed == assessmentNumber
+            ? _value.assessmentNumber
+            : assessmentNumber // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        timeLimitMinutes: freezed == timeLimitMinutes
+            ? _value.timeLimitMinutes
+            : timeLimitMinutes // ignore: cast_nullable_to_non_nullable
+                  as int?,
         securityConfig: freezed == securityConfig
             ? _value._securityConfig
             : securityConfig // ignore: cast_nullable_to_non_nullable
@@ -296,6 +354,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     required this.title,
     required this.description,
     required this.categoryId,
+    this.courseTitle = '',
     @JsonKey(unknownEnumValue: ExerciseType.unknown) required this.exerciseType,
     required this.difficulty,
     required this.authorUid,
@@ -303,6 +362,8 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     this.maxScore = 100,
     this.isPublished = true,
     this.practiceLevel,
+    this.assessmentNumber,
+    this.timeLimitMinutes,
     final Map<String, dynamic>? securityConfig,
     @TimestampConverter() required this.createdAt,
     @TimestampConverter() required this.updatedAt,
@@ -317,8 +378,17 @@ class _$ExerciseModelImpl implements _ExerciseModel {
   final String title;
   @override
   final String description;
+
+  /// Course this exercise belongs to. Students see it when this matches one
+  /// of their `enrolledCourseIds`.
   @override
   final String categoryId;
+
+  /// Human-readable course name, denormalised onto the exercise so the
+  /// student's assessment list can show it without a second read per card.
+  @override
+  @JsonKey()
+  final String courseTitle;
   @override
   @JsonKey(unknownEnumValue: ExerciseType.unknown)
   final ExerciseType exerciseType;
@@ -336,6 +406,23 @@ class _$ExerciseModelImpl implements _ExerciseModel {
   final bool isPublished;
   @override
   final int? practiceLevel;
+
+  /// This exercise's position among every exercise published under the
+  /// same [categoryId] — "Assessment 3" is the third exercise a lecturer
+  /// has ever published for that course, in publish order. Computed once
+  /// at publish time (see `LecturerManagementService.createExercise`), not
+  /// derived at read time, so it stays stable even if earlier assessments
+  /// are later unpublished. Null for a Free Practice level, which uses
+  /// [practiceLevel] and its own "LEVEL N" numbering instead.
+  @override
+  final int? assessmentNumber;
+
+  /// Minutes a student has once they open this exercise, or null for no
+  /// limit. When set, the canvas shows a countdown and auto-submits via
+  /// Check Connection the moment it reaches zero — set by the lecturer at
+  /// publish time, not something a student can change.
+  @override
+  final int? timeLimitMinutes;
   final Map<String, dynamic>? _securityConfig;
   @override
   Map<String, dynamic>? get securityConfig {
@@ -355,7 +442,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
 
   @override
   String toString() {
-    return 'ExerciseModel(exerciseId: $exerciseId, title: $title, description: $description, categoryId: $categoryId, exerciseType: $exerciseType, difficulty: $difficulty, authorUid: $authorUid, initialTopologyId: $initialTopologyId, maxScore: $maxScore, isPublished: $isPublished, practiceLevel: $practiceLevel, securityConfig: $securityConfig, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ExerciseModel(exerciseId: $exerciseId, title: $title, description: $description, categoryId: $categoryId, courseTitle: $courseTitle, exerciseType: $exerciseType, difficulty: $difficulty, authorUid: $authorUid, initialTopologyId: $initialTopologyId, maxScore: $maxScore, isPublished: $isPublished, practiceLevel: $practiceLevel, assessmentNumber: $assessmentNumber, timeLimitMinutes: $timeLimitMinutes, securityConfig: $securityConfig, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -370,6 +457,8 @@ class _$ExerciseModelImpl implements _ExerciseModel {
                 other.description == description) &&
             (identical(other.categoryId, categoryId) ||
                 other.categoryId == categoryId) &&
+            (identical(other.courseTitle, courseTitle) ||
+                other.courseTitle == courseTitle) &&
             (identical(other.exerciseType, exerciseType) ||
                 other.exerciseType == exerciseType) &&
             (identical(other.difficulty, difficulty) ||
@@ -384,6 +473,10 @@ class _$ExerciseModelImpl implements _ExerciseModel {
                 other.isPublished == isPublished) &&
             (identical(other.practiceLevel, practiceLevel) ||
                 other.practiceLevel == practiceLevel) &&
+            (identical(other.assessmentNumber, assessmentNumber) ||
+                other.assessmentNumber == assessmentNumber) &&
+            (identical(other.timeLimitMinutes, timeLimitMinutes) ||
+                other.timeLimitMinutes == timeLimitMinutes) &&
             const DeepCollectionEquality().equals(
               other._securityConfig,
               _securityConfig,
@@ -402,6 +495,7 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     title,
     description,
     categoryId,
+    courseTitle,
     exerciseType,
     difficulty,
     authorUid,
@@ -409,6 +503,8 @@ class _$ExerciseModelImpl implements _ExerciseModel {
     maxScore,
     isPublished,
     practiceLevel,
+    assessmentNumber,
+    timeLimitMinutes,
     const DeepCollectionEquality().hash(_securityConfig),
     createdAt,
     updatedAt,
@@ -434,6 +530,7 @@ abstract class _ExerciseModel implements ExerciseModel {
     required final String title,
     required final String description,
     required final String categoryId,
+    final String courseTitle,
     @JsonKey(unknownEnumValue: ExerciseType.unknown)
     required final ExerciseType exerciseType,
     required final DifficultyLevel difficulty,
@@ -442,6 +539,8 @@ abstract class _ExerciseModel implements ExerciseModel {
     final int maxScore,
     final bool isPublished,
     final int? practiceLevel,
+    final int? assessmentNumber,
+    final int? timeLimitMinutes,
     final Map<String, dynamic>? securityConfig,
     @TimestampConverter() required final DateTime createdAt,
     @TimestampConverter() required final DateTime updatedAt,
@@ -456,8 +555,16 @@ abstract class _ExerciseModel implements ExerciseModel {
   String get title;
   @override
   String get description;
+
+  /// Course this exercise belongs to. Students see it when this matches one
+  /// of their `enrolledCourseIds`.
   @override
   String get categoryId;
+
+  /// Human-readable course name, denormalised onto the exercise so the
+  /// student's assessment list can show it without a second read per card.
+  @override
+  String get courseTitle;
   @override
   @JsonKey(unknownEnumValue: ExerciseType.unknown)
   ExerciseType get exerciseType;
@@ -473,6 +580,23 @@ abstract class _ExerciseModel implements ExerciseModel {
   bool get isPublished;
   @override
   int? get practiceLevel;
+
+  /// This exercise's position among every exercise published under the
+  /// same [categoryId] — "Assessment 3" is the third exercise a lecturer
+  /// has ever published for that course, in publish order. Computed once
+  /// at publish time (see `LecturerManagementService.createExercise`), not
+  /// derived at read time, so it stays stable even if earlier assessments
+  /// are later unpublished. Null for a Free Practice level, which uses
+  /// [practiceLevel] and its own "LEVEL N" numbering instead.
+  @override
+  int? get assessmentNumber;
+
+  /// Minutes a student has once they open this exercise, or null for no
+  /// limit. When set, the canvas shows a countdown and auto-submits via
+  /// Check Connection the moment it reaches zero — set by the lecturer at
+  /// publish time, not something a student can change.
+  @override
+  int? get timeLimitMinutes;
   @override
   Map<String, dynamic>? get securityConfig;
   @override

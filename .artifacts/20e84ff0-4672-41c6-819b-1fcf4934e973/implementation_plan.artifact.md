@@ -1,26 +1,29 @@
-# Implementation Plan - Fix Layout Overflow in Student Dashboard
+# Implementation Plan - Fix Canvas Layout Overflow on Mobile
 
-The user reported a `RenderFlex` overflow in the Student Dashboard, specifically in the "Primary Action Bar" (Sandbox Launcher) when the screen is narrow (e.g., mobile view).
+The user reported a `RenderFlex` overflow (approx. 150px) on the canvas screen on mobile. This is likely caused by the fixed-width sidebars (`DevicePalette` at 220px and `NodePropertyInspector` at 320px) being placed in a horizontal `Row` with the canvas, which exceeds the width of mobile screens.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The fix involves changing the layout from a `Row` to a `Column` on narrow screens (less than 650px). This will cause the Sandbox launcher text and buttons to stack vertically on mobile.
+> On mobile devices (width < 900px), the sidebars will now **overlay** the canvas instead of pushing it. This ensures the canvas remains accessible and no overflow occurs, but it means parts of the canvas will be covered when a sidebar is open.
 
 ## Proposed Changes
 
-### Dashboard Feature
+### Topology Feature
 
-#### [MODIFY] [student_dashboard.dart](file:///C:/Users/Admin/Desktop/virtuanetlab/lib/features/dashboard/screens/student_dashboard.dart)
+#### [MODIFY] [canvas_builder_screen.dart](file:///C:/Users/Admin/Desktop/virtuanetlab/lib/features/topology/screens/canvas_builder_screen.dart)
 
-- Wrap the "Primary Action Bar" content in a `LayoutBuilder` to detect available width.
-- Switch from `Row` to `Column` when `constraints.maxWidth < 650`.
-- Update the title row for "Free Practice Progression" (line 406) to use `Expanded` for the title to prevent potential overflows there as well.
-- Audit and apply similar `Expanded` or `Wrap` fixes to other minor `Row` widgets in the file (e.g., Level Cards) if they appear risky.
+- Wrap the main workspace area (Sidebar + Canvas + Inspector) in a `LayoutBuilder`.
+- Implement a responsive layout:
+    - **Desktop (> 900px)**: Maintain the current `Row` layout where sidebars and canvas share horizontal space.
+    - **Mobile/Tablet (< 900px)**: Use a `Stack` where the canvas is the background (full-width) and sidebars are positioned as overlays.
+- Ensure `DevicePalette` and `NodePropertyInspector` are positioned at the left and right edges respectively when in overlay mode.
+- Add a subtle backdrop or shadow to overlays to differentiate them from the canvas background.
 
 ## Verification Plan
 
 ### Manual Verification
-- Resize the browser/emulator to a narrow width (e.g., 320px - 400px) and verify the "Primary Action Bar" stacks correctly and does not overflow.
-- Verify the "Free Practice Progression" section does not overflow.
-- Check the dashboard on a wider screen (desktop view) to ensure the layout remains as intended (horizontal layout).
+- Resize the browser or use a mobile emulator to trigger the narrow layout.
+- Open the Device Palette and select a node to open the Inspector simultaneously.
+- Verify that **no RenderFlex overflow** occurs and that both overlays are visible.
+- Verify that on desktop, the layout still uses the side-by-side `Row` configuration.

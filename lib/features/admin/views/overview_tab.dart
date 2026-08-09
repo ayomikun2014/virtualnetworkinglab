@@ -2,16 +2,36 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/departments.dart';
+import '../../../core/enums/app_enums.dart';
 import '../widgets/analytics_charts.dart';
 
-/// Admin Tab 0: Overview Hub with System Metrics, Analytics Charts & Activity Feed
+/// Admin Tab 0: Overview Hub with real System Metrics, Analytics Charts &
+/// Activity Feed
+///
+/// Every figure on this screen is a live Firestore count, not a fixed
+/// placeholder — a demo dataset with 3 students used to claim 148 of them.
 class OverviewTab extends StatelessWidget {
   final Function(int) onNavigateTab;
 
-  const OverviewTab({
-    super.key,
-    required this.onNavigateTab,
-  });
+  const OverviewTab({super.key, required this.onNavigateTab});
+
+  static const List<Color> _departmentColors = [
+    AppTheme.primaryCyan,
+    AppTheme.primaryBlue,
+    AppTheme.accentEmerald,
+    Color(0xFF8B5CF6),
+    Colors.amber,
+  ];
+
+  static const List<Color> _categoryColors = [
+    AppTheme.primaryCyan,
+    AppTheme.primaryBlue,
+    AppTheme.accentEmerald,
+    Color(0xFF8B5CF6),
+    Colors.amber,
+    AppTheme.accentCrimson,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +53,9 @@ class OverviewTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.surfaceGlass,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.accentEmerald.withValues(alpha: 0.4)),
+              border: Border.all(
+                color: AppTheme.accentEmerald.withValues(alpha: 0.4),
+              ),
             ),
             child: Row(
               children: [
@@ -43,7 +65,11 @@ class OverviewTab extends StatelessWidget {
                     color: AppTheme.accentEmerald,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check, color: AppTheme.backgroundMidnight, size: 18),
+                  child: const Icon(
+                    Icons.check,
+                    color: AppTheme.backgroundMidnight,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -60,7 +86,10 @@ class OverviewTab extends StatelessWidget {
                       ),
                       Text(
                         'Central Laboratory Network & Automated Simulation Engine operational.',
-                        style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -70,55 +99,176 @@ class OverviewTab extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // 2. 4 Mini Stat Cards Grid
-          LayoutBuilder(
-            builder: (context, constraints) {
-              int crossAxisCount = 1;
-              if (constraints.maxWidth > 1000) {
-                crossAxisCount = 4;
-              } else if (constraints.maxWidth > 600) {
-                crossAxisCount = 2;
+          // 2 & 3. Everything derived from the users collection: the four
+          // stat cards (except System Health, which lives in the banner
+          // above) and the department distribution chart. One stream, so
+          // an approval or a new registration updates all of it at once.
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection(AppConstants.usersCollection)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final docs = snapshot.data?.docs ?? [];
+
+              var studentCount = 0;
+              var approvedLecturerCount = 0;
+              var pendingLecturerCount = 0;
+              final courseCodesSeen = <String>{};
+              final studentsByDept = <String, int>{};
+
+              for (final doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final role = data['role'] as String?;
+
+                if (role == 'student') {
+                  studentCount++;
+                  final dept = data['departmentId'] as String? ?? 'dept_net';
+                  studentsByDept[dept] = (studentsByDept[dept] ?? 0) + 1;
+                } else if (role == 'lecturer') {
+                  if (data['approvalStatus'] == 'pending') {
+                    pendingLecturerCount++;
+                  } else {
+                    approvedLecturerCount++;
+                    final courses =
+                        (data['assignedCourses'] as List?)
+                            ?.cast<Map<String, dynamic>>() ??
+                        const [];
+                    for (final c in courses) {
+                      final code = c['code'] as String?;
+                      if (code != null && code.isNotEmpty) {
+                        courseCodesSeen.add(code);
+                      }
+                    }
+                  }
+                }
               }
 
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 2.2,
+              final departmentCounts = studentsByDept.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatCard('Total Students', '148', Icons.school, AppTheme.primaryCyan),
-                  _buildStatCard('Active Lecturers', '12', Icons.badge, AppTheme.accentEmerald),
-                  _buildStatCard('Active Courses', '8', Icons.menu_book, AppTheme.primaryBlue),
-                  _buildStatCard('System Health', '100%', Icons.shield, Colors.amber),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      int crossAxisCount = 1;
+                      if (constraints.maxWidth > 1000) {
+                        crossAxisCount = 4;
+                      } else if (constraints.maxWidth > 600) {
+                        crossAxisCount = 2;
+                      }
+
+                      return GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 2.2,
+                        children: [
+                          _buildStatCard(
+                            'Total Students',
+                            '$studentCount',
+                            Icons.school,
+                            AppTheme.primaryCyan,
+                          ),
+                          _buildStatCard(
+                            'Active Lecturers',
+                            '$approvedLecturerCount',
+                            Icons.badge,
+                            AppTheme.accentEmerald,
+                          ),
+                          _buildStatCard(
+                            'Pending Approvals',
+                            '$pendingLecturerCount',
+                            Icons.pending_actions,
+                            Colors.amber,
+                            onTap: pendingLecturerCount > 0
+                                ? () => onNavigateTab(1)
+                                : null,
+                          ),
+                          _buildStatCard(
+                            'Courses Offered',
+                            '${courseCodesSeen.length}',
+                            Icons.menu_book,
+                            AppTheme.primaryBlue,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final barChart = DepartmentBarChartCard(
+                        departments: [
+                          for (var i = 0; i < departmentCounts.length; i++)
+                            DepartmentCount(
+                              name: departmentLabel(departmentCounts[i].key),
+                              count: departmentCounts[i].value,
+                              color:
+                                  _departmentColors[i %
+                                      _departmentColors.length],
+                            ),
+                        ],
+                      );
+
+                      final pieChart = StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection(AppConstants.exercisesCollection)
+                            .snapshots(),
+                        builder: (context, exerciseSnapshot) {
+                          final exerciseDocs =
+                              exerciseSnapshot.data?.docs ?? [];
+                          final byType = <String, int>{};
+
+                          for (final doc in exerciseDocs) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final type =
+                                data['exerciseType'] as String? ?? 'unknown';
+                            byType[type] = (byType[type] ?? 0) + 1;
+                          }
+
+                          final entries = byType.entries.toList()
+                            ..sort((a, b) => b.value.compareTo(a.value));
+
+                          return LabCategoryPieChartCard(
+                            categories: [
+                              for (var i = 0; i < entries.length; i++)
+                                CategoryShare(
+                                  name: _exerciseTypeLabel(entries[i].key),
+                                  count: entries[i].value,
+                                  color:
+                                      _categoryColors[i %
+                                          _categoryColors.length],
+                                ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (constraints.maxWidth > 850) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: barChart),
+                            const SizedBox(width: 16),
+                            Expanded(child: pieChart),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          barChart,
+                          const SizedBox(height: 16),
+                          pieChart,
+                        ],
+                      );
+                    },
+                  ),
                 ],
               );
-            },
-          ),
-          const SizedBox(height: 24),
-
-          // 3. Visual Analytics Charts Section (Bar Chart & Donut/Pie Chart)
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 850) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Expanded(child: DepartmentBarChartCard()),
-                    SizedBox(width: 16),
-                    Expanded(child: LabCategoryPieChartCard()),
-                  ],
-                );
-              } else {
-                return Column(
-                  children: const [
-                    DepartmentBarChartCard(),
-                    SizedBox(height: 16),
-                    LabCategoryPieChartCard(),
-                  ],
-                );
-              }
             },
           ),
           const SizedBox(height: 28),
@@ -126,7 +276,11 @@ class OverviewTab extends StatelessWidget {
           // 4. Quick Actions Bar
           const Text(
             'Quick Administrative Actions',
-            style: TextStyle(color: AppTheme.textBright, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppTheme.textBright,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -135,21 +289,39 @@ class OverviewTab extends StatelessWidget {
             runSpacing: 12,
             children: [
               ElevatedButton.icon(
-                icon: const Icon(Icons.person_add, size: 18),
-                label: const Text('Provision Lecturer Account'),
+                icon: const Icon(Icons.how_to_reg, size: 18),
+                label: const Text('Review Pending Lecturers'),
                 onPressed: () => onNavigateTab(1), // Jump to Lecturers Tab
               ),
               OutlinedButton.icon(
-                icon: const Icon(Icons.add_card, color: AppTheme.primaryCyan, size: 18),
-                label: const Text('Add Course / Curriculum', style: TextStyle(color: AppTheme.primaryCyan)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.primaryCyan)),
-                onPressed: () => onNavigateTab(2), // Jump to Courses Tab
+                icon: const Icon(
+                  Icons.groups,
+                  color: AppTheme.primaryCyan,
+                  size: 18,
+                ),
+                label: const Text(
+                  'Student Directory',
+                  style: TextStyle(color: AppTheme.primaryCyan),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.primaryCyan),
+                ),
+                onPressed: () => onNavigateTab(2), // Jump to Students Tab
               ),
               OutlinedButton.icon(
-                icon: const Icon(Icons.receipt_long, color: AppTheme.textBright, size: 18),
-                label: const Text('View Audit Logs', style: TextStyle(color: AppTheme.textBright)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.borderSubtle)),
-                onPressed: () => onNavigateTab(4), // Jump to Audit Logs
+                icon: const Icon(
+                  Icons.receipt_long,
+                  color: AppTheme.textBright,
+                  size: 18,
+                ),
+                label: const Text(
+                  'View Audit Logs',
+                  style: TextStyle(color: AppTheme.textBright),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.borderSubtle),
+                ),
+                onPressed: () => onNavigateTab(3), // Jump to Audit Logs
               ),
             ],
           ),
@@ -158,13 +330,17 @@ class OverviewTab extends StatelessWidget {
           // 5. Real-time Audit Stream Activity Feed
           const Text(
             'Recent System Audit Feed',
-            style: TextStyle(color: AppTheme.textBright, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppTheme.textBright,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
 
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('${AppConstants.rootPath}/${AppConstants.activityLogsCollection}')
+                .collection(AppConstants.currentActivityLogsCollection)
                 .orderBy('timestamp', descending: true)
                 .limit(5)
                 .snapshots(),
@@ -173,7 +349,9 @@ class OverviewTab extends StatelessWidget {
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(color: AppTheme.primaryCyan),
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryCyan,
+                    ),
                   ),
                 );
               }
@@ -188,7 +366,10 @@ class OverviewTab extends StatelessWidget {
                     border: Border.all(color: AppTheme.borderSubtle),
                   ),
                   child: const Center(
-                    child: Text('No audit events logged yet.', style: TextStyle(color: AppTheme.textMuted)),
+                    child: Text(
+                      'No audit events logged yet.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
                   ),
                 );
               }
@@ -197,7 +378,8 @@ class OverviewTab extends StatelessWidget {
                 children: docs.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final action = data['action'] ?? 'EVENT';
-                  final description = data['description'] ?? 'System activity logged';
+                  final description =
+                      data['description'] ?? 'System activity logged';
                   final performedBy = data['performedBy'] ?? 'Admin';
                   final timestamp = data['timestamp'] ?? '';
 
@@ -217,7 +399,11 @@ class OverviewTab extends StatelessWidget {
                             color: AppTheme.primaryCyan.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.bolt, color: AppTheme.primaryCyan, size: 20),
+                          child: const Icon(
+                            Icons.bolt,
+                            color: AppTheme.primaryCyan,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -227,9 +413,14 @@ class OverviewTab extends StatelessWidget {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.primaryCyan.withValues(alpha: 0.15),
+                                      color: AppTheme.primaryCyan.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -246,7 +437,10 @@ class OverviewTab extends StatelessWidget {
                                     child: Text(
                                       'By $performedBy',
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                                      style: const TextStyle(
+                                        color: AppTheme.textMuted,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -254,15 +448,23 @@ class OverviewTab extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 description,
-                                style: const TextStyle(color: AppTheme.textBright, fontSize: 13),
+                                style: const TextStyle(
+                                  color: AppTheme.textBright,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          timestamp.length > 10 ? timestamp.substring(0, 10) : timestamp,
-                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          timestamp.length > 10
+                              ? timestamp.substring(0, 10)
+                              : timestamp,
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -276,13 +478,31 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
+  static String _exerciseTypeLabel(String raw) {
+    final type = ExerciseType.values.firstWhere(
+      (t) => t.name == raw,
+      orElse: () => ExerciseType.unknown,
+    );
+    return type.displayName;
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceGlass,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderSubtle),
+        border: Border.all(
+          color: onTap != null
+              ? color.withValues(alpha: 0.5)
+              : AppTheme.borderSubtle,
+        ),
       ),
       child: Row(
         children: [
@@ -300,17 +520,37 @@ class OverviewTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(color: AppTheme.textBright, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: AppTheme.textBright,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+
+    // Only the Pending Approvals card is tappable, and only once there's
+    // something in the queue — jumping to an empty Lecturers tab to prove
+    // there's nothing to do is a wasted click.
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: card,
     );
   }
 }

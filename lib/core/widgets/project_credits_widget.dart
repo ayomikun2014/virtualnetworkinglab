@@ -5,10 +5,7 @@ import '../../app/theme/app_theme.dart';
 class ProjectCreditsWidget extends StatelessWidget {
   final bool compact;
 
-  const ProjectCreditsWidget({
-    super.key,
-    this.compact = false,
-  });
+  const ProjectCreditsWidget({super.key, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +32,11 @@ class ProjectCreditsWidget extends StatelessWidget {
             SizedBox(height: 2),
             Text(
               'By: Afolabi Victoria Abosede (NT20240111512)',
-              style: TextStyle(color: AppTheme.textBright, fontSize: 11, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppTheme.textBright,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Text(
               'Supervised By: Mr. Mathew Adebunmi',
@@ -93,10 +94,7 @@ class ProjectCreditsWidget extends StatelessWidget {
           Text(
             'DEPARTMENT OF COMPUTER NETWORKING AND CLOUD COMPUTING • SCHOOL OF COMPUTING TECHNOLOGY • FEDERAL POLYTECHNIC EDE',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.textMuted,
-              fontSize: 9,
-            ),
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
           ),
         ],
       ),

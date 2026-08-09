@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/app_constants.dart';
@@ -8,141 +7,117 @@ class LecturerManagementService {
   final FirebaseFirestore _firestore;
 
   LecturerManagementService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Firestore Namespace Getters (/virtuanetlab/app/...)
-  String get _classesPath => '${AppConstants.rootPath}/${AppConstants.classesCollection}';
-  String get _exercisesPath => '${AppConstants.rootPath}/${AppConstants.exercisesCollection}';
-  String get _submissionsPath => '${AppConstants.rootPath}/submissions';
-  String get _logsPath => '${AppConstants.rootPath}/${AppConstants.activityLogsCollection}';
+  String get _exercisesPath => AppConstants.exercisesCollection;
+  String get _logsPath => AppConstants.currentActivityLogsCollection;
 
-  /// Generate Unique 8-Character Alphanumeric Join Code (e.g., NET2026A)
-  String _generateJoinCode(String courseCode) {
-    final cleanCode = courseCode.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
-    final prefix = cleanCode.length >= 3 ? cleanCode.substring(0, 3) : 'NET';
-    final random = Random();
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final suffix = List.generate(4, (_) => chars[random.nextInt(chars.length)]).join();
+  /// Reserves the Firestore document id for an exercise the lecturer is about
+  /// to author.
+  ///
+  /// The id has to exist *before* publishing because the lecturer designs the
+  /// solution canvas first, and that canvas is saved under
+  /// `{exerciseId}_solution`. Reserving up front is what lets the answer key
+  /// point at the canvas they actually built.
+  String reserveExerciseId() => _firestore.collection(_exercisesPath).doc().id;
 
-    return '$prefix$suffix';
-  }
+  /// Topology id holding the lecturer's worked solution for [exerciseId].
+  static String solutionTopologyIdFor(String exerciseId) =>
+      '${exerciseId}_solution';
 
-  /// Create a New Class Section & Generate Join Code
-  Future<Map<String, dynamic>?> createClass({
-    required String courseId,
-    required String sectionName,
-    required String lecturerUid,
-    required String semester,
-  }) async {
-    try {
-      final docRef = _firestore.collection(_classesPath).doc();
-      final joinCode = _generateJoinCode(courseId);
-      final now = DateTime.now();
-
-      final classData = {
-        'id': docRef.id,
-        'courseId': courseId,
-        'sectionName': sectionName,
-        'lecturerUid': lecturerUid,
-        'semester': semester,
-        'joinCode': joinCode,
-        'studentCount': 0,
-        'isActive': true,
-        'createdAt': now.toIso8601String(),
-        'updatedAt': now.toIso8601String(),
-      };
-
-      await docRef.set(classData);
-
-      // Log class creation activity
-      await _logActivity(
-        action: 'CREATE_CLASS',
-        description: 'Created class $sectionName for course $courseId with Join Code: $joinCode',
-        performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
-      );
-
-      return classData;
-    } catch (_) {
-      return null;
-    }
+  /// This course's next assessment number — one more than however many
+  /// exercises already exist under [categoryId], published or not.
+  /// Deliberately counts unpublished/deleted ones too were there any: the
+  /// number marks *when* an assessment was created relative to the others,
+  /// not a live position in a re-orderable list, so it must never be
+  /// reused even if an earlier assessment is later removed.
+  Future<int> _nextAssessmentNumber(String categoryId) async {
+    final existing = await _firestore
+        .collection(_exercisesPath)
+        .where('categoryId', isEqualTo: categoryId)
+        .count()
+        .get();
+    return (existing.count ?? 0) + 1;
   }
 
   /// Publish a New Practical Exercise with Private Solution Key
+  ///
+  /// [exerciseId] should come from [reserveExerciseId] so it matches the
+  /// solution canvas the lecturer already designed. This wizard only
+  /// publishes course exercises now — [practiceLevel] stays null; Free
+  /// Practice levels are a separate, seeded curriculum
+  /// (`PracticeLevelSeedService`), not something authored ad hoc here.
   Future<bool> createExercise({
+    required String exerciseId,
     required String title,
     required String instructions,
     required String exerciseType,
+    required String categoryId,
+    required String courseTitle,
     required String difficulty,
     required double maxScore,
     required String initialTopologyId,
     String? solutionTopologyId,
+    int? timeLimitMinutes,
     Map<String, dynamic>? targetCriteria,
   }) async {
     try {
-      final docRef = _firestore.collection(_exercisesPath).doc();
+      final docRef = _firestore.collection(_exercisesPath).doc(exerciseId);
       final now = DateTime.now();
+      final assessmentNumber = await _nextAssessmentNumber(categoryId);
 
-      // 1. Write Public Exercise Metadata
+      // 1. Write Public Exercise Metadata.
+      //
+      // Field names here MUST match ExerciseModel's @freezed schema
+      // (lib/data/models/exercise_model.dart) exactly — ExerciseModel.fromJson
+      // does unchecked `as String` casts on `exerciseId`/`description`/
+      // `categoryId`/`exerciseType`, so a mismatched key here doesn't fail
+      // quietly, it throws the first time any student reads this exercise
+      // back (getExercise / getPracticeLevels / getCourseAssessments all go
+      // through ExerciseModel.fromJson unguarded).
       await docRef.set({
-        'id': docRef.id,
+        'exerciseId': docRef.id,
         'title': title,
-        'instructions': instructions,
-        'type': exerciseType,
+        'description': instructions,
+        'categoryId': categoryId,
+        'courseTitle': courseTitle,
+        'exerciseType': exerciseType,
         'difficulty': difficulty,
         'maxScore': maxScore,
         'initialTopologyId': initialTopologyId,
+        'practiceLevel': null,
+        'assessmentNumber': assessmentNumber,
+        'timeLimitMinutes': timeLimitMinutes,
         'authorUid': FirebaseAuth.instance.currentUser?.uid ?? 'lecturer',
         'isPublished': true,
         'createdAt': now.toIso8601String(),
         'updatedAt': now.toIso8601String(),
       });
 
-      // 2. Write Private Solution Key Sub-Collection Document
+      // 2. Write Private Solution Key Sub-Collection Document.
+      //
+      // Defaults to `{exerciseId}_solution` — a per-exercise id — rather than
+      // reusing initialTopologyId or a fixed constant, so every published
+      // exercise doesn't silently end up grading student work against the
+      // same shared answer key.
       await docRef.collection('private').doc('solution_key').set({
-        'solutionTopologyId': solutionTopologyId ?? initialTopologyId,
-        'targetCriteria': targetCriteria ?? {
-          'icmpPingSuccess': true,
-          'ospfAdjacencyVerified': true,
-          'vlanTaggingCorrect': true,
-        },
+        'solutionTopologyId':
+            solutionTopologyId ?? solutionTopologyIdFor(exerciseId),
+        'targetCriteria':
+            targetCriteria ??
+            {
+              'icmpPingSuccess': true,
+              'ospfAdjacencyVerified': true,
+              'vlanTaggingCorrect': true,
+            },
         'updatedAt': now.toIso8601String(),
       });
 
       await _logActivity(
         action: 'PUBLISH_EXERCISE',
-        description: 'Published exercise: $title ($exerciseType, Max: $maxScore)',
-        performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
-      );
-
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Submit Lecturer Manual Grade Override & Feedback
-  Future<bool> submitGradeOverride({
-    required String submissionId,
-    required double finalScore,
-    required String feedback,
-    required String lecturerUid,
-  }) async {
-    try {
-      final docRef = _firestore.collection(_submissionsPath).doc(submissionId);
-      final now = DateTime.now();
-
-      await docRef.set({
-        'finalScore': finalScore,
-        'lecturerFeedback': feedback,
-        'gradedByUid': lecturerUid,
-        'gradedAt': now.toIso8601String(),
-        'status': 'graded',
-        'updatedAt': now.toIso8601String(),
-      }, SetOptions(merge: true));
-
-      await _logActivity(
-        action: 'GRADE_SUBMISSION',
-        description: 'Graded submission $submissionId with score $finalScore',
+        description:
+            'Published exercise: $title ($exerciseType, Max: $maxScore)',
         performedBy: FirebaseAuth.instance.currentUser?.email ?? 'Lecturer',
       );
 

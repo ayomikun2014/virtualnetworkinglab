@@ -29,7 +29,14 @@ _$UserModelImpl _$$UserModelImplFromJson(
       ?.map((e) => e as String)
       .toList(),
   freePracticeLevel: (json['freePracticeLevel'] as num?)?.toInt() ?? 1,
+  points: (json['points'] as num?)?.toInt() ?? 0,
   isActive: json['isActive'] as bool? ?? true,
+  approvalStatus: json['approvalStatus'] as String? ?? 'approved',
+  assignedCourses:
+      (json['assignedCourses'] as List<dynamic>?)
+          ?.map((e) => Map<String, String>.from(e as Map))
+          .toList() ??
+      const [],
   lastLoginAt: const TimestampConverter().fromJson(
     json['lastLoginAt'] as Object,
   ),
@@ -50,7 +57,10 @@ Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
       'taughtClassIds': instance.taughtClassIds,
       'enrolledCourseIds': instance.enrolledCourseIds,
       'freePracticeLevel': instance.freePracticeLevel,
+      'points': instance.points,
       'isActive': instance.isActive,
+      'approvalStatus': instance.approvalStatus,
+      'assignedCourses': instance.assignedCourses,
       'lastLoginAt': const TimestampConverter().toJson(instance.lastLoginAt),
       'createdAt': const TimestampConverter().toJson(instance.createdAt),
       'updatedAt': const TimestampConverter().toJson(instance.updatedAt),

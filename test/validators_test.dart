@@ -10,7 +10,10 @@ void main() {
     });
 
     test('isValidMatricNumber rejects invalid matriculation numbers', () {
-      expect(Validators.isValidMatricNumber('CS20240111512'), isFalse); // Non-NT prefix
+      expect(
+        Validators.isValidMatricNumber('CS20240111512'),
+        isFalse,
+      ); // Non-NT prefix
       expect(Validators.isValidMatricNumber('NT2024'), isFalse); // Too short
       expect(Validators.isValidMatricNumber('123456789'), isFalse);
       expect(Validators.isValidMatricNumber(''), isFalse);

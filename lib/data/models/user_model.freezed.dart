@@ -32,7 +32,29 @@ mixin _$UserModel {
   List<String>? get taughtClassIds => throw _privateConstructorUsedError;
   List<String>? get enrolledCourseIds => throw _privateConstructorUsedError;
   int get freePracticeLevel => throw _privateConstructorUsedError;
+
+  /// Running score. Passing a level adds points, a failed Check Connection
+  /// spends some, and levels past the first need a couple in hand before
+  /// they can be opened — so a student has to actually build something
+  /// that works to keep moving. Never negative: see
+  /// [IGradingRepository.applyPointsDelta].
+  int get points => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
+
+  /// Only meaningful for `role == lecturer`. A self-registered lecturer
+  /// starts 'pending' and cannot reach the lecturer dashboard — the
+  /// router sends them to a waiting screen instead — until an admin
+  /// approves them and assigns courses, which flips this to 'approved'.
+  /// Every other account (students, admins, and lecturers provisioned
+  /// before this existed) defaults to 'approved' so nothing else is
+  /// gated by a field it never asked for.
+  String get approvalStatus => throw _privateConstructorUsedError;
+
+  /// The courses a lecturer teaches, as {code, title} pairs — set by an
+  /// admin at approval time (or edited later), not chosen by the
+  /// lecturer. Empty for every non-lecturer.
+  List<Map<String, String>> get assignedCourses =>
+      throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime get lastLoginAt => throw _privateConstructorUsedError;
   @TimestampConverter()
@@ -67,7 +89,10 @@ abstract class $UserModelCopyWith<$Res> {
     List<String>? taughtClassIds,
     List<String>? enrolledCourseIds,
     int freePracticeLevel,
+    int points,
     bool isActive,
+    String approvalStatus,
+    List<Map<String, String>> assignedCourses,
     @TimestampConverter() DateTime lastLoginAt,
     @TimestampConverter() DateTime createdAt,
     @TimestampConverter() DateTime updatedAt,
@@ -100,7 +125,10 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? taughtClassIds = freezed,
     Object? enrolledCourseIds = freezed,
     Object? freePracticeLevel = null,
+    Object? points = null,
     Object? isActive = null,
+    Object? approvalStatus = null,
+    Object? assignedCourses = null,
     Object? lastLoginAt = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -148,10 +176,22 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
                 ? _value.freePracticeLevel
                 : freePracticeLevel // ignore: cast_nullable_to_non_nullable
                       as int,
+            points: null == points
+                ? _value.points
+                : points // ignore: cast_nullable_to_non_nullable
+                      as int,
             isActive: null == isActive
                 ? _value.isActive
                 : isActive // ignore: cast_nullable_to_non_nullable
                       as bool,
+            approvalStatus: null == approvalStatus
+                ? _value.approvalStatus
+                : approvalStatus // ignore: cast_nullable_to_non_nullable
+                      as String,
+            assignedCourses: null == assignedCourses
+                ? _value.assignedCourses
+                : assignedCourses // ignore: cast_nullable_to_non_nullable
+                      as List<Map<String, String>>,
             lastLoginAt: null == lastLoginAt
                 ? _value.lastLoginAt
                 : lastLoginAt // ignore: cast_nullable_to_non_nullable
@@ -194,7 +234,10 @@ abstract class _$$UserModelImplCopyWith<$Res>
     List<String>? taughtClassIds,
     List<String>? enrolledCourseIds,
     int freePracticeLevel,
+    int points,
     bool isActive,
+    String approvalStatus,
+    List<Map<String, String>> assignedCourses,
     @TimestampConverter() DateTime lastLoginAt,
     @TimestampConverter() DateTime createdAt,
     @TimestampConverter() DateTime updatedAt,
@@ -226,7 +269,10 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? taughtClassIds = freezed,
     Object? enrolledCourseIds = freezed,
     Object? freePracticeLevel = null,
+    Object? points = null,
     Object? isActive = null,
+    Object? approvalStatus = null,
+    Object? assignedCourses = null,
     Object? lastLoginAt = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -274,10 +320,22 @@ class __$$UserModelImplCopyWithImpl<$Res>
             ? _value.freePracticeLevel
             : freePracticeLevel // ignore: cast_nullable_to_non_nullable
                   as int,
+        points: null == points
+            ? _value.points
+            : points // ignore: cast_nullable_to_non_nullable
+                  as int,
         isActive: null == isActive
             ? _value.isActive
             : isActive // ignore: cast_nullable_to_non_nullable
                   as bool,
+        approvalStatus: null == approvalStatus
+            ? _value.approvalStatus
+            : approvalStatus // ignore: cast_nullable_to_non_nullable
+                  as String,
+        assignedCourses: null == assignedCourses
+            ? _value._assignedCourses
+            : assignedCourses // ignore: cast_nullable_to_non_nullable
+                  as List<Map<String, String>>,
         lastLoginAt: null == lastLoginAt
             ? _value.lastLoginAt
             : lastLoginAt // ignore: cast_nullable_to_non_nullable
@@ -313,13 +371,17 @@ class _$UserModelImpl implements _UserModel {
     final List<String>? taughtClassIds,
     final List<String>? enrolledCourseIds,
     this.freePracticeLevel = 1,
+    this.points = 0,
     this.isActive = true,
+    this.approvalStatus = 'approved',
+    final List<Map<String, String>> assignedCourses = const [],
     @TimestampConverter() required this.lastLoginAt,
     @TimestampConverter() required this.createdAt,
     @TimestampConverter() required this.updatedAt,
     final Map<String, dynamic> stats = const {},
   }) : _taughtClassIds = taughtClassIds,
        _enrolledCourseIds = enrolledCourseIds,
+       _assignedCourses = assignedCourses,
        _stats = stats;
 
   factory _$UserModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -364,9 +426,46 @@ class _$UserModelImpl implements _UserModel {
   @override
   @JsonKey()
   final int freePracticeLevel;
+
+  /// Running score. Passing a level adds points, a failed Check Connection
+  /// spends some, and levels past the first need a couple in hand before
+  /// they can be opened — so a student has to actually build something
+  /// that works to keep moving. Never negative: see
+  /// [IGradingRepository.applyPointsDelta].
+  @override
+  @JsonKey()
+  final int points;
   @override
   @JsonKey()
   final bool isActive;
+
+  /// Only meaningful for `role == lecturer`. A self-registered lecturer
+  /// starts 'pending' and cannot reach the lecturer dashboard — the
+  /// router sends them to a waiting screen instead — until an admin
+  /// approves them and assigns courses, which flips this to 'approved'.
+  /// Every other account (students, admins, and lecturers provisioned
+  /// before this existed) defaults to 'approved' so nothing else is
+  /// gated by a field it never asked for.
+  @override
+  @JsonKey()
+  final String approvalStatus;
+
+  /// The courses a lecturer teaches, as {code, title} pairs — set by an
+  /// admin at approval time (or edited later), not chosen by the
+  /// lecturer. Empty for every non-lecturer.
+  final List<Map<String, String>> _assignedCourses;
+
+  /// The courses a lecturer teaches, as {code, title} pairs — set by an
+  /// admin at approval time (or edited later), not chosen by the
+  /// lecturer. Empty for every non-lecturer.
+  @override
+  @JsonKey()
+  List<Map<String, String>> get assignedCourses {
+    if (_assignedCourses is EqualUnmodifiableListView) return _assignedCourses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_assignedCourses);
+  }
+
   @override
   @TimestampConverter()
   final DateTime lastLoginAt;
@@ -387,7 +486,7 @@ class _$UserModelImpl implements _UserModel {
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, photoURL: $photoURL, studentIdNumber: $studentIdNumber, role: $role, departmentId: $departmentId, taughtClassIds: $taughtClassIds, enrolledCourseIds: $enrolledCourseIds, freePracticeLevel: $freePracticeLevel, isActive: $isActive, lastLoginAt: $lastLoginAt, createdAt: $createdAt, updatedAt: $updatedAt, stats: $stats)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, photoURL: $photoURL, studentIdNumber: $studentIdNumber, role: $role, departmentId: $departmentId, taughtClassIds: $taughtClassIds, enrolledCourseIds: $enrolledCourseIds, freePracticeLevel: $freePracticeLevel, points: $points, isActive: $isActive, approvalStatus: $approvalStatus, assignedCourses: $assignedCourses, lastLoginAt: $lastLoginAt, createdAt: $createdAt, updatedAt: $updatedAt, stats: $stats)';
   }
 
   @override
@@ -416,8 +515,15 @@ class _$UserModelImpl implements _UserModel {
             ) &&
             (identical(other.freePracticeLevel, freePracticeLevel) ||
                 other.freePracticeLevel == freePracticeLevel) &&
+            (identical(other.points, points) || other.points == points) &&
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
+            (identical(other.approvalStatus, approvalStatus) ||
+                other.approvalStatus == approvalStatus) &&
+            const DeepCollectionEquality().equals(
+              other._assignedCourses,
+              _assignedCourses,
+            ) &&
             (identical(other.lastLoginAt, lastLoginAt) ||
                 other.lastLoginAt == lastLoginAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -441,7 +547,10 @@ class _$UserModelImpl implements _UserModel {
     const DeepCollectionEquality().hash(_taughtClassIds),
     const DeepCollectionEquality().hash(_enrolledCourseIds),
     freePracticeLevel,
+    points,
     isActive,
+    approvalStatus,
+    const DeepCollectionEquality().hash(_assignedCourses),
     lastLoginAt,
     createdAt,
     updatedAt,
@@ -474,7 +583,10 @@ abstract class _UserModel implements UserModel {
     final List<String>? taughtClassIds,
     final List<String>? enrolledCourseIds,
     final int freePracticeLevel,
+    final int points,
     final bool isActive,
+    final String approvalStatus,
+    final List<Map<String, String>> assignedCourses,
     @TimestampConverter() required final DateTime lastLoginAt,
     @TimestampConverter() required final DateTime createdAt,
     @TimestampConverter() required final DateTime updatedAt,
@@ -505,8 +617,32 @@ abstract class _UserModel implements UserModel {
   List<String>? get enrolledCourseIds;
   @override
   int get freePracticeLevel;
+
+  /// Running score. Passing a level adds points, a failed Check Connection
+  /// spends some, and levels past the first need a couple in hand before
+  /// they can be opened — so a student has to actually build something
+  /// that works to keep moving. Never negative: see
+  /// [IGradingRepository.applyPointsDelta].
+  @override
+  int get points;
   @override
   bool get isActive;
+
+  /// Only meaningful for `role == lecturer`. A self-registered lecturer
+  /// starts 'pending' and cannot reach the lecturer dashboard — the
+  /// router sends them to a waiting screen instead — until an admin
+  /// approves them and assigns courses, which flips this to 'approved'.
+  /// Every other account (students, admins, and lecturers provisioned
+  /// before this existed) defaults to 'approved' so nothing else is
+  /// gated by a field it never asked for.
+  @override
+  String get approvalStatus;
+
+  /// The courses a lecturer teaches, as {code, title} pairs — set by an
+  /// admin at approval time (or edited later), not chosen by the
+  /// lecturer. Empty for every non-lecturer.
+  @override
+  List<Map<String, String>> get assignedCourses;
   @override
   @TimestampConverter()
   DateTime get lastLoginAt;

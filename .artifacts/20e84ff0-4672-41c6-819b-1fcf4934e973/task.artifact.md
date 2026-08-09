@@ -1,0 +1,6 @@
+- [x] Fix "This widget has been unmounted" error in `canvas_builder_screen.dart`
+- [x] Refactor `canvas_builder_screen.dart` to improve layout robustness and fix potential `ParentDataWidget` issues
+    - [x] Extract `_buildCanvasViewport`
+    - [x] Clean up `LayoutBuilder` branches
+- [ ] Verify if "Incorrect use of ParentDataWidget" persists
+- [ ] Update walkthrough artifact

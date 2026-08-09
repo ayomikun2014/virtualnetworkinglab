@@ -5,18 +5,15 @@ import '../enums/app_enums.dart';
 import '../errors/failures.dart';
 import '../utils/validators.dart';
 import '../../data/models/user_model.dart';
-import '../../data/models/class_model.dart';
 
 /// Core Authentication & Cross-Role Linking Service for VirtuaNetLab
 class AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
-  AuthService({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Resolves an institutional Matriculation Number (e.g., NT20240111512) to an Email Address
   Future<String> resolveEmailFromMatric(String matricNumber) async {
@@ -54,7 +51,9 @@ class AuthService {
     } on Failure {
       rethrow;
     } catch (e) {
-      throw ServerFailure('Failed to resolve email from matriculation number: $e');
+      throw ServerFailure(
+        'Failed to resolve email from matriculation number: $e',
+      );
     }
   }
 
@@ -66,7 +65,9 @@ class AuthService {
     final cleanIdentifier = identifier.trim();
 
     if (cleanIdentifier.isEmpty) {
-      throw const ValidationFailure('Please enter your Email or Matriculation Number');
+      throw const ValidationFailure(
+        'Please enter your Email or Matriculation Number',
+      );
     }
 
     if (password.isEmpty) {
@@ -76,8 +77,9 @@ class AuthService {
     String resolvedEmail;
 
     // Root Admin Shortcut
-    if (cleanIdentifier == 'admin@virtuanetlab.univ.edu' || cleanIdentifier.toLowerCase() == 'admin') {
-      resolvedEmail = 'admin@virtuanetlab.univ.edu';
+    if (cleanIdentifier == 'adminlab@gmail.com' ||
+        cleanIdentifier.toLowerCase() == 'admin') {
+      resolvedEmail = 'adminlab@gmail.com';
       try {
         final userCredential = await _auth.signInWithEmailAndPassword(
           email: resolvedEmail,
@@ -92,17 +94,20 @@ class AuthService {
           );
           // Write admin user profile
           final now = DateTime.now();
-          await _firestore.collection(AppConstants.usersCollection).doc(userCredential.user!.uid).set({
-            'uid': userCredential.user!.uid,
-            'email': resolvedEmail,
-            'displayName': 'Root Administrator',
-            'role': UserRole.admin.name,
-            'departmentId': 'dept_admin',
-            'isActive': true,
-            'lastLoginAt': now.toIso8601String(),
-            'createdAt': now.toIso8601String(),
-            'updatedAt': now.toIso8601String(),
-          }, SetOptions(merge: true));
+          await _firestore
+              .collection(AppConstants.usersCollection)
+              .doc(userCredential.user!.uid)
+              .set({
+                'uid': userCredential.user!.uid,
+                'email': 'adminlab@gmail.com',
+                'displayName': 'Root Administrator',
+                'role': UserRole.admin.name,
+                'departmentId': 'dept_admin',
+                'isActive': true,
+                'lastLoginAt': now.toIso8601String(),
+                'createdAt': now.toIso8601String(),
+                'updatedAt': now.toIso8601String(),
+              }, SetOptions(merge: true));
           return userCredential;
         } catch (_) {}
       }
@@ -110,7 +115,9 @@ class AuthService {
       resolvedEmail = await resolveEmailFromMatric(cleanIdentifier);
     } else {
       if (!Validators.isValidEmail(cleanIdentifier)) {
-        throw const ValidationFailure('Please enter a valid Email Address or Matriculation Number');
+        throw const ValidationFailure(
+          'Please enter a valid Email Address or Matriculation Number',
+        );
       }
       resolvedEmail = cleanIdentifier;
     }
@@ -126,23 +133,29 @@ class AuthService {
         await _firestore
             .collection(AppConstants.usersCollection)
             .doc(userCredential.user!.uid)
-            .update({
-          'lastLoginAt': FieldValue.serverTimestamp(),
-        });
+            .update({'lastLoginAt': FieldValue.serverTimestamp()});
       }
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
-          throw const AuthFailure('No user account found with these credentials.');
+          throw const AuthFailure(
+            'No user account found with these credentials.',
+          );
         case 'wrong-password':
         case 'invalid-credential':
-          throw const AuthFailure('Invalid credentials provided. Please check your password.');
+          throw const AuthFailure(
+            'Invalid credentials provided. Please check your password.',
+          );
         case 'user-disabled':
-          throw const AuthFailure('This account has been disabled. Contact administrator.');
+          throw const AuthFailure(
+            'This account has been disabled. Contact administrator.',
+          );
         default:
-          throw AuthFailure(e.message ?? 'Authentication failed. Please try again.');
+          throw AuthFailure(
+            e.message ?? 'Authentication failed. Please try again.',
+          );
       }
     } catch (e) {
       throw ServerFailure('Login error: $e');
@@ -163,7 +176,9 @@ class AuthService {
     final cleanName = displayName.trim();
 
     if (!Validators.isValidEmail(cleanEmail)) {
-      throw const ValidationFailure('Please enter a valid institutional email address.');
+      throw const ValidationFailure(
+        'Please enter a valid institutional email address.',
+      );
     }
     if (!Validators.isValidMatricNumber(cleanMatric)) {
       throw const ValidationFailure(
@@ -171,7 +186,9 @@ class AuthService {
       );
     }
     if (!Validators.isPasswordValid(password)) {
-      throw const ValidationFailure('Password must be at least 6 characters long.');
+      throw const ValidationFailure(
+        'Password must be at least 6 characters long.',
+      );
     }
     if (!Validators.isValidDisplayName(cleanName)) {
       throw const ValidationFailure('Please enter your full name.');
@@ -211,10 +228,7 @@ class AuthService {
         lastLoginAt: now,
         createdAt: now,
         updatedAt: now,
-        stats: {
-          'completedExercises': 0,
-          'totalScore': 0,
-        },
+        stats: {'completedExercises': 0, 'totalScore': 0},
       );
 
       await _firestore
@@ -222,27 +236,12 @@ class AuthService {
           .doc(uid)
           .set(userModel.toJson());
 
-      for (final courseId in enrolledCourseIds) {
-        final memberId = '${courseId}_$uid';
-        final memberModel = ClassMemberModel(
-          memberId: memberId,
-          classId: courseId,
-          studentUid: uid,
-          status: MemberStatus.active,
-          joinedAt: now,
-          createdAt: now,
-        );
-
-        await _firestore
-            .collection(AppConstants.classMembersCollection)
-            .doc(memberId)
-            .set(memberModel.toJson());
-      }
-
       return userModel;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        throw const AuthFailure('Email address is already in use by another account.');
+        throw const AuthFailure(
+          'Email address is already in use by another account.',
+        );
       }
       throw AuthFailure(e.message ?? 'Registration failed.');
     } on Failure {
@@ -252,83 +251,81 @@ class AuthService {
     }
   }
 
-  /// Student Joins a Class Cohort using Lecturer's 8-Character Join Code
-  Future<bool> joinClassWithCode({
-    required String joinCode,
-    required String studentUid,
+  /// Self-service Lecturer Registration — Pending Admin Approval
+  ///
+  /// Creates a real, immediately login-able Firebase Auth account (the
+  /// lecturer sets their own password here, same as a student would), but
+  /// the Firestore profile is written with `approvalStatus: 'pending'` and
+  /// no assigned courses. The router keeps a pending lecturer off the real
+  /// dashboard until an admin approves them — see
+  /// `AppRouter.createRouter`'s redirect and `PendingApprovalScreen`.
+  ///
+  /// This sidesteps the reason admin-side account creation never worked
+  /// (see the removed `AdminProvisionService.provisionLecturer`): a client
+  /// SDK cannot create another user's Auth account without hijacking its
+  /// own session, but a user can always create their own.
+  Future<UserModel> registerLecturer({
+    required String email,
+    required String password,
+    required String displayName,
+    required String departmentId,
   }) async {
-    final cleanCode = joinCode.trim().toUpperCase();
-    if (cleanCode.length < 4) {
-      throw const ValidationFailure('Enter a valid 8-character class join code.');
+    final cleanEmail = email.trim();
+    final cleanName = displayName.trim();
+
+    if (!Validators.isValidEmail(cleanEmail)) {
+      throw const ValidationFailure(
+        'Please enter a valid institutional email address.',
+      );
+    }
+    if (!Validators.isPasswordValid(password)) {
+      throw const ValidationFailure(
+        'Password must be at least 6 characters long.',
+      );
+    }
+    if (!Validators.isValidDisplayName(cleanName)) {
+      throw const ValidationFailure('Please enter your full name.');
     }
 
     try {
-      final classQuery = await _firestore
-          .collection('${AppConstants.rootPath}/${AppConstants.classesCollection}')
-          .where('joinCode', isEqualTo: cleanCode)
-          .limit(1)
-          .get();
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
 
-      if (classQuery.docs.isEmpty) {
-        throw AuthFailure('No active class section found for join code $cleanCode');
-      }
-
-      final classDoc = classQuery.docs.first;
-      final classData = classDoc.data();
-      final classId = classDoc.id;
-      final courseId = classData['courseId'] as String? ?? 'NET201';
-      final sectionName = classData['sectionName'] as String? ?? 'Section A';
-
+      final uid = userCredential.user!.uid;
       final now = DateTime.now();
 
-      // 1. Add courseId to Student's enrolledCourseIds
+      final userModel = UserModel(
+        uid: uid,
+        email: cleanEmail,
+        displayName: cleanName,
+        role: UserRole.lecturer,
+        departmentId: departmentId,
+        approvalStatus: 'pending',
+        isActive: true,
+        lastLoginAt: now,
+        createdAt: now,
+        updatedAt: now,
+      );
+
       await _firestore
           .collection(AppConstants.usersCollection)
-          .doc(studentUid)
-          .update({
-        'enrolledCourseIds': FieldValue.arrayUnion([courseId]),
-        'updatedAt': now.toIso8601String(),
-      });
+          .doc(uid)
+          .set(userModel.toJson());
 
-      // 2. Create class_members Junction Record
-      final memberId = '${classId}_$studentUid';
-      await _firestore
-          .collection(AppConstants.classMembersCollection)
-          .doc(memberId)
-          .set({
-        'memberId': memberId,
-        'classId': classId,
-        'studentUid': studentUid,
-        'status': 'active',
-        'joinedAt': now.toIso8601String(),
-        'createdAt': now.toIso8601String(),
-      }, SetOptions(merge: true));
-
-      // 3. Increment studentCount in class document
-      await _firestore
-          .collection('${AppConstants.rootPath}/${AppConstants.classesCollection}')
-          .doc(classId)
-          .update({
-        'studentCount': FieldValue.increment(1),
-        'updatedAt': now.toIso8601String(),
-      });
-
-      // 4. Log Activity Event for Admin Feed
-      final logDoc = _firestore.collection('${AppConstants.rootPath}/${AppConstants.activityLogsCollection}').doc();
-      await logDoc.set({
-        'id': logDoc.id,
-        'action': 'JOIN_CLASS',
-        'description': 'Student ($studentUid) joined class $sectionName ($courseId) with code $cleanCode',
-        'performedBy': studentUid,
-        'timestamp': now.toIso8601String(),
-        'createdAt': now.toIso8601String(),
-      });
-
-      return true;
+      return userModel;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        throw const AuthFailure(
+          'Email address is already in use by another account.',
+        );
+      }
+      throw AuthFailure(e.message ?? 'Registration failed.');
     } on Failure {
       rethrow;
     } catch (e) {
-      throw ServerFailure('Failed to join class cohort: $e');
+      throw ServerFailure('Failed to register lecturer account: $e');
     }
   }
 

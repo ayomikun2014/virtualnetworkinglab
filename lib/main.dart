@@ -27,6 +27,15 @@ void main() async {
     // Admin seeding fail-safe
   }
 
+  // Starter Free Practice levels are NOT seeded here.
+  //
+  // This point in startup is before runApp, so nobody is signed in yet. Any
+  // Firestore ruleset that requires an authenticated request rejects every
+  // write made from here — silently, since seeding can't be allowed to
+  // block launch — which is exactly why Free Practice stayed empty with no
+  // visible error. `ExerciseProvider.fetchPracticeLevels()` now seeds
+  // lazily instead, as the signed-in user, and surfaces failures.
+
   // 3. Render Root Application Engine wrapped with DevicePreview for cross-device testing
   runApp(
     DevicePreview(

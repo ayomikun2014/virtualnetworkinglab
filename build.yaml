@@ -1,0 +1,29 @@
+# Code-generation config for json_serializable / freezed.
+#
+# explicit_to_json is the important one, and it is NOT the default.
+#
+# Without it, a generated `toJson()` emits nested model objects as-is:
+#
+#     'nodes': instance.nodes,        // List<DeviceNode>
+#
+# rather than converting them:
+#
+#     'nodes': instance.nodes.map((e) => e.toJson()).toList(),
+#
+# That still round-trips through `jsonEncode()`, because jsonEncode walks
+# the object graph and calls `toJson()` on anything it doesn't recognise.
+# Cloud Firestore does NOT do that — `set()` accepts only primitives, Maps
+# and Lists, and rejects the whole write with:
+#
+#     [cloud_firestore/invalid-argument] Unsupported field value: a custom
+#     _$DeviceNodeImpl object
+#
+# So every TopologyModel containing at least one device silently failed to
+# save (an empty canvas has no nested objects, so it wrote fine — which is
+# what made this look intermittent rather than total).
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          explicit_to_json: true

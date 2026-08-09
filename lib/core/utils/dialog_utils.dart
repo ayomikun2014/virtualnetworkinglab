@@ -41,7 +41,10 @@ class DialogUtils {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.textMuted),
+              ),
             ),
             ElevatedButton.icon(
               icon: const Icon(Icons.logout, size: 16),

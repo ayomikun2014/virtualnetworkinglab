@@ -108,7 +108,8 @@ enum QueueStatus {
   @JsonValue('failed')
   failed;
 
-  bool get isFinished => this == QueueStatus.completed || this == QueueStatus.failed;
+  bool get isFinished =>
+      this == QueueStatus.completed || this == QueueStatus.failed;
 }
 
 /// Canvas Device Hardware Classification
