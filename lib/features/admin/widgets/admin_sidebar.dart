@@ -64,13 +64,19 @@ class AdminSidebar extends StatelessWidget {
                 children: const [
                   AppLogoWidget(size: 38),
                   SizedBox(width: 12),
-                  Text(
-                    'VirtuaNetLab',
-                    style: TextStyle(
-                      color: AppTheme.textBright,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                  Expanded(
+                    child: Text(
+                      'Virtual Networking Laboratory',
+                      softWrap: true,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppTheme.textBright,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                 ],

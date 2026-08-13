@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "backend-testing-d4ece"
-  }
+  },
+  "targets": {
+    "backend-testing-d4ece": {
+      "hosting": {
+        "virtualnetlab": [
+          "virtualnetlab"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

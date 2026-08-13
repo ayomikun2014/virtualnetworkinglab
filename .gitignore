@@ -70,4 +70,8 @@ functions/node_modules/
 functions/lib/
 node_modules/
 
+# Firebase CLI cache
+.firebase/
+
+
 

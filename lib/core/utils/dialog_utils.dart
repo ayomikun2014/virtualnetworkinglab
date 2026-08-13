@@ -35,7 +35,7 @@ class DialogUtils {
             ],
           ),
           content: const Text(
-            'Are you sure you want to sign out of VirtuaNetLab?',
+            'Are you sure you want to sign out of Virtual Networking Laboratory?',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
           ),
           actions: [

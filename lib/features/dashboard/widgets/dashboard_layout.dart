@@ -184,13 +184,16 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'VirtuaNetLab',
+                      'Virtual Networking Laboratory',
+                      softWrap: true,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppTheme.textBright,
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
+                        height: 1.2,
                       ),
                     ),
                   ),
@@ -370,12 +373,18 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'VirtuaNetLab',
-                      style: TextStyle(
-                        color: AppTheme.textBright,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    const Expanded(
+                      child: Text(
+                        'Virtual Networking Laboratory',
+                        softWrap: true,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppTheme.textBright,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
                       ),
                     ),
                   ],

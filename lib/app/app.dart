@@ -53,7 +53,7 @@ class _VirtuaNetLabAppState extends State<VirtuaNetLabApp> {
         ChangeNotifierProvider(create: (_) => SaveHistoryProvider()),
       ],
       child: MaterialApp.router(
-        title: 'VirtuaNetLab — Virtual Network Laboratory',
+        title: 'Virtual Networking Laboratory',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         locale: DevicePreview.locale(context),

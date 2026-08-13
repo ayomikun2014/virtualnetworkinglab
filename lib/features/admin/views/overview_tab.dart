@@ -77,7 +77,7 @@ class OverviewTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Virtual Network Lab Active',
+                        'Virtual Networking Laboratory Active',
                         style: TextStyle(
                           color: AppTheme.textBright,
                           fontWeight: FontWeight.bold,

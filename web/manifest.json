@@ -1,6 +1,6 @@
 {
-    "name": "virtuanetlab",
-    "short_name": "virtuanetlab",
+    "name": "Virtual Networking Laboratory",
+    "short_name": "Virtual Networking Laboratory",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
